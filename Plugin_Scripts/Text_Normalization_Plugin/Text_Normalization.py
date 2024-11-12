@@ -1,4 +1,4 @@
-from ..Plugin_Base.Plugin_Base import PluginBase
+from ..PluginBase import PluginBase
 
 import jaconv # 日文文本转换工具
 import unicodedata
@@ -13,7 +13,7 @@ class Text_Normalization_Plugin(PluginBase):
         self.visibility = True # 是否在插件设置中显示
         self.default_enable = True # 默认启用状态
 
-        self.add_event('normalize_text', 5)  # 添加感兴趣的事件和优先级
+        self.add_event('normalize_text', PluginBase.PRIORITY.NORMAL)
 
 
     def load(self):
@@ -37,7 +37,6 @@ class Text_Normalization_Plugin(PluginBase):
             if configuration_information.source_language == "英语":
                 for k in event_data.keys():
                     text = unicodedata.normalize('NFKC', event_data.get(k, ""))
-                    text = self.remove_spaces(text)
                     event_data[k] = text
 
 

@@ -32,24 +32,27 @@ class PluginBase:
         self.name = "Unnamed Plugin"
         self.description = "No description provided."
 
-        self.visibility = True # 是否在插件设置中显示
-        self.default_enable = True # 默认启用状态
+        self.visibility = True      # 是否在插件设置中显示
+        self.default_enable = True  # 默认启用状态
 
-        self.events = []  # 插件感兴趣的事件列表，使用字典存储事件名和优先级
+        self.events = []            # 插件感兴趣的事件列表，使用字典存储事件名和优先级
 
+    # 加载插件时调用
     def load(self):
-        """加载插件时调用"""
         pass
 
-    def on_event(self, event_name, configuration_information, event_data):
-        """处理事件"""
+    # 处理事件
+    def on_event(self, event: str, configuration_information: dict, event_data: list):
         pass
 
-
-    def add_event(self, event_name, priority):
-        # 添加事件和对应的优先级到事件列表
-        self.events.append({'event': event_name, 'priority': priority})
-
+    # 添加事件
+    def add_event(self, event: str, priority: int):
+        self.events.append(
+            {
+                "event": event,
+                "priority": priority,
+            }
+        )
 ```
 在编写插件时，您需要创建一个继承自`PluginBase`的新类，并实现必要的方法。
 
@@ -76,28 +79,48 @@ class PluginBase:
 ## 示例代码
 以下是一个简单的插件示例，它继承自`PluginBase`并监听了`preproces_text`事件：
 ```python
-from ..Plugin_Base.Plugin_Base import PluginBase
+from Plugin_Scripts.PluginBase import PluginBase
+
 class Example_Plugin(PluginBase):
+
     def __init__(self):
         super().__init__()
-        self.name = "example_Plugin"
-        self.description = "This is an example plugin."
-        self.add_event('postprocess_text', 5)  # 添加感兴趣的事件和触发优先级
+
+        self.name = "GlossaryChecker"
+        self.description = (
+            "指令词典检查器，在翻译完成后检查指令词典中的各个条目是否正确的生效"
+            + "\n"
+            + "兼容性：支持全部语言；支持全部模型；支持全部文本格式；"
+        )
+
+        self.visibility = True          # 是否在插件设置中显示
+        self.default_enable = True      # 默认启用状态
+
+        self.add_event("manual_export", PluginBase.PRIORITY.LOWER)
+        self.add_event("postprocess_text", PluginBase.PRIORITY.LOWER)
 
     def load(self):
-        print(f"[INFO] {self.name} loaded!")
+        pass
 
-    def on_event(self, event_name, configuration_information, event_data):
-        # 事件触发
-        if event_name == "preproces_text":
+    def on_event(self, event, configurator, data):
+        # 检查数据有效性
+        if event == None or len(event) <= 1:
+            return
 
-            # 如果翻译日语或者韩语文本时，则去除非中日韩文本
-            if  configuration_information.source_language == "日语" or  configuration_information.source_language == "韩语":
-                
-                # 过滤文本
-                self.preproces_text(event_data)
+        # 初始化
+        items = data[1:]
+        project = data[0]
 
-                print(f"[INFO] Non-Japanese/Korean text has been filtered.")
+        # 如果指令词典未启用或者无内容，则跳过
+        if (
+            configurator.prompt_dictionary_switch == False
+            or configurator.prompt_dictionary_content == None
+            or len(configurator.prompt_dictionary_content) == 0
+        ):
+            return
+
+        if event in ("manual_export", "postprocess_text"):
+            self.on_postprocess_text(event, configurator, data, items, project)
 ```
 
 
@@ -137,7 +160,7 @@ class Example_Plugin(PluginBase):
     | event_data | list | 全局缓存文本数据，格式与导出的缓存文件一致 |
 
 - `configuration_information`: 全局配置类，用于获取和设置应用程序的配置信息。
-    下面是部分配置信息变量，如果需要获取更多配置信息，可以到Config.py文件中查看，基本在__init__(self,script_dir)与 load_config_file (self)中
+    下面是部分配置信息变量，如果需要获取更多配置信息，可以到Config.py文件中查看，基本在__init__(self,script_dir)与 initialization_from_config_file (self)中
     ```python
         self.script_dir = script_dir          # 根目录路径
         self.resource_dir = os.path.join(script_dir, "Resource") # 配置文件路径
@@ -150,9 +173,9 @@ class Example_Plugin(PluginBase):
         self.label_input_path = "" # 存储输入文件夹
         self.label_output_path = "" # 存储输出文件夹
 
-        self.lines_limit_switch = True  # 行数开关         
+        self.lines_limit_switch = True  # 行数开关
         self.lines_limit = 15  # 行数限制
-        self.tokens_limit_switch = False   # tokens开关       
+        self.tokens_limit_switch = False   # tokens开关
         self.tokens_limit = 2000  # tokens限制
         self.user_thread_counts = 1 # 用户设置的线程数
         self.running_thread_counts= 1  # 实际设置的线程数
@@ -178,7 +201,7 @@ class Example_Plugin(PluginBase):
 
         self.model = ""             #模型选择
         self.apikey_list = [] # 存储key的列表
-        self.key_index = 0  # 方便轮询key的索引
+        self.apikey_index = 0  # 方便轮询key的索引
         self.base_url = 'https://api.openai.com/v1' # api请求地址
         self.max_tokens = 4000
         self.RPM_limit = 3500
@@ -189,18 +212,18 @@ class Example_Plugin(PluginBase):
         self.openai_top_p_initialvalue = 0              #AI的top_p，作用与temperature相同，官方建议不要同时修改
         self.openai_presence_penalty_initialvalue = 0  #AI的存在惩罚，生成新词前检查旧词是否存在相同的词。0.0是不惩罚，2.0是最大惩罚，-2.0是最大奖励
         self.openai_frequency_penalty_initialvalue = 0 #AI的频率惩罚，限制词语重复出现的频率。0.0是不惩罚，2.0是最大惩罚，-2.0是最大奖励
-        self.sakura_temperature_initialvalue = 0        
-        self.sakura_top_p_initialvalue = 0             
-        self.sakura_frequency_penalty_initialvalue = 0 
-        self.anthropic_temperature_initialvalue   =  0 
-        self.google_temperature_initialvalue   =  0 
-        self.cohere_temperature_initialvalue   =  0 
+        self.sakura_temperature_initialvalue = 0
+        self.sakura_top_p_initialvalue = 0
+        self.sakura_frequency_penalty_initialvalue = 0
+        self.anthropic_temperature_initialvalue   =  0
+        self.google_temperature_initialvalue   =  0
+        self.cohere_temperature_initialvalue   =  0
 
         # 缓存数据以及运行状态
         self.cache_list = [] # 全局缓存文本数据
-        self.Running_status = 0  # 存储程序工作的状态，0是空闲状态
+        self.status = 0  # 存储程序工作的状态，0是空闲状态
                                 # 1是正在接口测试状态,6是翻译任务进行状态，9是正在暂停状态，10是已暂停状态,11是正在取消状态，0也是已取消状态
-    ```  
+    ```
 
     - `event_data`: 全局缓存文本数据，格式与导出的缓存文件一致。
     ```python
@@ -217,7 +240,7 @@ class Example_Plugin(PluginBase):
         5.译文： "translated_text"
         6.存储路径： "storage_path"
         7.存储文件名： "storage_file_name"
-        8.翻译模型： "model"                         
+        8.翻译模型： "model"
         等等
 
         """

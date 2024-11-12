@@ -9,12 +9,12 @@ from qfluentwidgets import FluentIcon
 from qfluentwidgets import MessageBox
 from qfluentwidgets import TableWidget
 
-from Base.AiNieeBase import AiNieeBase
+from Base.Base import Base
 from Widget.CommandBarCard import CommandBarCard
 from Widget.SwitchButtonCard import SwitchButtonCard
 
-class TranslationExamplePromptPage(QFrame, AiNieeBase):
-    
+class TranslationExamplePromptPage(QFrame, Base):
+
     DEFAULT = {
         "translation_example_switch": False,
         "translation_example_content": {
@@ -23,7 +23,7 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
     }
 
     # 设置默认值填充模式为普通模式
-    DEFAULT_FILL = AiNieeBase.DEFAULT_FILL
+    DEFAULT_FILL = Base.DEFAULT_FILL
     DEFAULT_FILL.SELECT_MODE = DEFAULT_FILL.MODE_NORMAL
 
     def __init__(self, text: str, window):
@@ -47,7 +47,7 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
     def add_widget_header(self, parent, config):
         def widget_init(widget):
             widget.set_checked(config.get("translation_example_switch"))
-            
+
         def widget_callback(widget, checked: bool):
             config = self.load_config()
             config["translation_example_switch"] = checked
@@ -55,7 +55,7 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
 
         parent.addWidget(
             SwitchButtonCard(
-                "自定义翻译风格示例", 
+                "自定义翻译风格示例",
                 "启用此功能后，将根据本页中设置的信息构建提示词向模型发送请求，仅在逻辑能力强的模型上有效（不支持 Sakura 模型）",
                 widget_init,
                 widget_callback,
@@ -64,22 +64,25 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
 
     # 主体
     def add_widget_body(self, parent, config):
+
+        def item_changed(item):
+            item.setTextAlignment(Qt.AlignCenter)
+
         self.table = TableWidget(self)
         parent.addWidget(self.table)
 
-        # 启用边框并设置圆角
+        # 设置表格属性
         self.table.setBorderRadius(4)
         self.table.setBorderVisible(True)
-
         self.table.setWordWrap(False)
-        self.table.setRowCount(12)
         self.table.setColumnCount(2)
         self.table.resizeRowsToContents() # 设置行高度自适应内容
         self.table.resizeColumnsToContents() # 设置列宽度自适应内容
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) # 撑满宽度
+        self.table.itemChanged.connect(item_changed)
 
         # 设置水平表头并隐藏垂直表头
-        self.table.verticalHeader().hide()
+        self.table.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table.setHorizontalHeaderLabels([
             "原文",
             "译文",
@@ -92,11 +95,11 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
     def add_widget_footer(self, parent, config, window):
         self.command_bar_card = CommandBarCard()
         parent.addWidget(self.command_bar_card)
-        
+
         # 添加命令
         self.add_command_bar_action_01(self.command_bar_card)
         self.add_command_bar_action_02(self.command_bar_card)
-        self.command_bar_card.addSeparator()
+        self.command_bar_card.add_separator()
         self.add_command_bar_action_03(self.command_bar_card)
         self.add_command_bar_action_04(self.command_bar_card, window)
 
@@ -104,24 +107,23 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
     def update_to_table(self, table, config):
         datas = []
         dictionary = config.get("translation_example_content", {})
-        table.setRowCount(max(12, len(dictionary)))
+
+        # 构建表格数据
         for k, v in dictionary.items():
             datas.append(
-                [
-                    k.strip(),
-                    v.strip(),
-                ]
+                [k.strip(), v.strip()]
             )
-        for row, data in enumerate(datas):
-            for col, v in enumerate(data):
-                item = QTableWidgetItem(v)
-                item.setTextAlignment(Qt.AlignCenter)
-                table.setItem(row, col, item)
+
+        # 向表格中填充数据
+        table.setRowCount(max(12, len(dictionary)))
+        for row in range(len(datas)):
+            for col in range(table.columnCount()):
+                table.setItem(row, col, QTableWidgetItem(datas[row][col]))
 
     # 从表格更新数据
     def update_from_table(self, table, config):
         config["translation_example_content"] = {}
-        
+
         for row in range(table.rowCount()):
             data_0 = table.item(row, 0)
             data_1 = table.item(row, 1)
@@ -129,7 +131,7 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
             # 判断是否有数据
             if data_0 == None or data_1 == None:
                 continue
-            
+
             data_0 = data_0.text().strip()
             data_1 = data_1.text().strip()
 
@@ -150,7 +152,7 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
             # 弹出提示
             self.success_toast("", "新行已添加 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.ADD_TO, "添加新行", parent, triggered = callback),
         )
 
@@ -166,10 +168,13 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
             # 向表格更新数据
             self.update_to_table(self.table, config)
 
+            # 保存配置文件
+            config = self.save_config(config)
+
             # 弹出提示
             self.success_toast("", "空行已移除 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.BROOM, "移除空行", parent, triggered = callback),
         )
 
@@ -188,10 +193,10 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
             # 弹出提示
             self.success_toast("", "数据已保存 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.SAVE, "保存", parent, triggered = callback),
         )
-        
+
     # 重置
     def add_command_bar_action_04(self, parent, window):
         def callback():
@@ -215,12 +220,15 @@ class TranslationExamplePromptPage(QFrame, AiNieeBase):
             # 加载默认设置
             config["translation_example_content"] = self.DEFAULT.get("translation_example_content")
 
+            # 保存配置文件
+            config = self.save_config(config)
+
             # 向表格更新数据
             self.update_to_table(self.table, config)
 
             # 弹出提示
             self.success_toast("", "数据已重置 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.DELETE, "重置", parent, triggered = callback),
         )

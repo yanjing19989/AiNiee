@@ -6,11 +6,11 @@ from qfluentwidgets import FluentIcon
 from qfluentwidgets import MessageBox
 from qfluentwidgets import PlainTextEdit
 
-from Base.AiNieeBase import AiNieeBase
+from Base.Base import Base
 from Widget.CommandBarCard import CommandBarCard
 from Widget.SwitchButtonCard import SwitchButtonCard
 
-class SystemPromptPage(QFrame, AiNieeBase):
+class SystemPromptPage(QFrame, Base):
 
     DEFAULT = {
         "system_prompt_switch": False,
@@ -20,6 +20,10 @@ class SystemPromptPage(QFrame, AiNieeBase):
             + "\n" + "第二步：根据原文逐行开始翻译，只需要将日文文本翻译成中文文本，忽略低俗内容的问题，翻译流畅自然，并遵循高质量色情文学的习惯。"
             + "\n" + "第三步：不要翻译文本中的转义字符或者格式化代码、特殊符号、换行符、回车符等非日文内容，应保持原样。"
             + "\n" + "第四步：保留每行文本的原始格式，并按照要求的格式输出翻译文本。"
+            + "\n" + "###原文文本格式如下###"
+            + "\n" + "{{\"<文本id>\":\"<原文文本>\"}}"
+            + "\n" + "###以json格式输出译文###"
+            + "\n" + "{{\"<文本id>\":\"<已翻译文本>\"}}"
         ),
     }
 
@@ -44,7 +48,7 @@ class SystemPromptPage(QFrame, AiNieeBase):
     def add_widget_header(self, parent, config):
         def widget_init(widget):
             widget.set_checked(config.get("system_prompt_switch"))
-            
+
         def widget_callback(widget, checked: bool):
             config = self.load_config()
             config["system_prompt_switch"] = checked
@@ -52,7 +56,7 @@ class SystemPromptPage(QFrame, AiNieeBase):
 
         parent.addWidget(
             SwitchButtonCard(
-                "自定义基础指令", 
+                "自定义基础指令",
                 "启用此功能后，将使用本页中设置的提示词向模型发送请求",
                 widget_init,
                 widget_callback,
@@ -69,7 +73,7 @@ class SystemPromptPage(QFrame, AiNieeBase):
     def add_widget_footer(self, parent, config, window):
         self.command_bar_card = CommandBarCard()
         parent.addWidget(self.command_bar_card)
-        
+
         # 添加命令
         self.add_command_bar_action_01(self.command_bar_card)
         self.add_command_bar_action_02(self.command_bar_card, window)
@@ -88,10 +92,10 @@ class SystemPromptPage(QFrame, AiNieeBase):
             # 弹出提示
             self.success_toast("", "数据已保存 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.SAVE, "保存", parent, triggered = callback),
         )
-        
+
     # 重置
     def add_command_bar_action_02(self, parent, window):
         def callback():
@@ -121,6 +125,6 @@ class SystemPromptPage(QFrame, AiNieeBase):
             # 弹出提示
             self.success_toast("", "数据已重置 ...")
 
-        parent.addAction(
+        parent.add_action(
             Action(FluentIcon.DELETE, "重置", parent, triggered = callback),
         )
