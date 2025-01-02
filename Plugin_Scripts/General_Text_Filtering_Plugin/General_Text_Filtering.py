@@ -17,7 +17,7 @@ class General_Text_Filtering(PluginBase):
         print(f"[INFO] {self.name} loaded!")
 
 
-    def on_event(self, event_name, configuration_information, event_data):
+    def on_event(self, event_name, config, event_data):
 
         # 文本预处理事件触发
         if event_name == "text_filter":
@@ -59,6 +59,11 @@ class General_Text_Filtering(PluginBase):
                     entry['translation_status'] = 7
                     continue
 
+                # 检查文本是仅换行符
+                if source_text in ("\n","\\n","\r","\\r"):
+                    entry['translation_status'] = 7
+                    continue
+
                 # 检查是否仅含标点符号的文本组合
                 if isinstance(source_text, str) and self.is_punctuation_string(source_text):
                     entry['translation_status'] = 7
@@ -66,13 +71,13 @@ class General_Text_Filtering(PluginBase):
 
 
                 #加个检测后缀为MP3，wav，png，这些文件名的文本，都是纯代码文本，所以忽略掉
-                if isinstance(source_text, str) and any(source_text.lower().endswith(ext) for ext in ['.mp3', '.wav', '.png', '.jpg', '.gif', '.rar', '.zip', '.json']):
+                if isinstance(source_text, str) and any(source_text.lower().endswith(ext) for ext in ['.mp3', '.wav', '.png', '.jpg', '.gif', '.rar', '.zip', '.json', '.ogg']):
                     entry['translation_status'] = 7
                     continue
 
 
                 # 同上
-                if isinstance(source_text, str) and any(source_text.lower().endswith(ext) for ext in ['.txt', '.wav']):
+                if isinstance(source_text, str) and any(source_text.lower().endswith(ext) for ext in ['.txt', '.wav', '.webp']):
                     entry['translation_status'] = 7
                     continue
 
@@ -113,7 +118,7 @@ class General_Text_Filtering(PluginBase):
 
     # 检查字符串是否只包含常见的标点符号
     def is_punctuation_string(self,s: str) -> bool:
-        """检查字符串是否只包含标点符号"""
-        punctuation = set("!" '"' "#" "$" "%" "&" "'" "(" ")" "*" "+" "," "-" "." "/" "，" "。"
+        """检查字符串是否只是标点符号与双种空格组合"""
+        punctuation = set(" " " " "!" '"' "#" "$" "%" "&" "'" "(" ")" "*" "+" "," "-" "." "/" "，" "。"
                         ":" ";" "<" "=" ">" "?" "@" "[" "\\" "]" "^" "_" "`" "{" "|" "}" "~" "—" "・")
         return all(char in punctuation for char in s)

@@ -1,4 +1,4 @@
-from PyQt5.Qt import QEvent
+from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QFrame
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QVBoxLayout
@@ -11,21 +11,22 @@ from Widget.PushButtonCard import PushButtonCard
 
 class ProjectPage(QFrame, Base):
 
-    DEFAULT = {
-        "target_platform": "deepseek",
-        "translation_project": "Mtool导出文件",
-        "source_language": "日语",
-        "target_language": "简中",
-        "label_input_path": "./input",
-        "label_output_path": "./output",
-    }
-
     def __init__(self, text: str, window):
         super().__init__(window)
         self.setObjectName(text.replace(" ", "-"))
 
-        # 载入配置文件
-        config = self.load_config()
+        # 默认配置
+        self.default = {
+            "target_platform": "deepseek",
+            "translation_project": "Mtool导出文件",
+            "source_language": "日语",
+            "target_language": "简中",
+            "label_input_path": "./input",
+            "label_output_path": "./output",
+        }
+
+        # 载入并保存默认配置
+        config = self.save_config(self.load_config_from_default())
 
         # 设置主容器
         self.container = QVBoxLayout(self)
@@ -115,9 +116,11 @@ class ProjectPage(QFrame, Base):
                 [
                     "Txt小说文件",
                     "Srt字幕文件",
+                    "Vtt字幕文件",
                     "Lrc音声文件",
                     "T++导出文件",
                     "Epub小说文件",
+                    "Docx文档文件",
                     "Mtool导出文件",
                     "VNText导出文件",
                     "Ainiee缓存文件",
@@ -201,7 +204,7 @@ class ProjectPage(QFrame, Base):
     # 输出文件夹
     def add_widget_06(self, parent, config):
         def widget_init(widget):
-            widget.set_description(f"当前输出文件夹为 {config.get("label_output_path")}")
+            widget.set_description(f"当前输出文件夹(*不能与输入相同)为 {config.get("label_output_path")}")
             widget.set_text("选择文件夹")
             widget.set_icon(FluentIcon.FOLDER_ADD)
 

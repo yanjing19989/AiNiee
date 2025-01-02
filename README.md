@@ -12,19 +12,28 @@
   
 <p align="center">
   
-  **AiNiee 是一款专注于Ai翻译的工具，可以用来一键自动翻译RPG SLG游戏，Epub TXT小说，Srt Lrc字幕等等**
+  **AiNiee 是一款专注于 Ai 翻译的工具，可以用来一键自动翻译 游戏、小说、字幕 等复杂的长文本内容。**
 </p>
 
 
-* **多格式支持**: json/xlsx导出文件、Epub/TXT 小说、Srt/Lrc 字幕等。
-* **多平台接入**: 支持国内外主流AI接口平台，可方便快速使用OpenAI、Google、Anthropic、Deepseek、智谱等平台的接口。
-* **多语言翻译**:  支持多种语言的互相翻译，例如中文、英文、日文、韩文、俄语等。
+* **多格式**: json/xlsx导出文件、Epub/TXT 小说、Srt/Vtt/Lrc 字幕、Word文档等。
+* **多平台**: 支持国内外主流AI平台，可方便快速使用OpenAI、Google、Anthropic、DeepSeek 系列模型。
+* **多语言**:  支持多种语言的互相翻译，例如中文、英文、日文、韩文、俄语等。
 * **灵活配置**: 自定义请求格式、平台、模型、翻译行数、线程数等。
 * **高效翻译**: 拥有多文件批量翻译、多线程翻译、多key轮询、混合平台翻译等功能。
-* **翻译优化**: 思维链翻译、动态Few-Shot、提示书编写、上文自携带、文本自适应处理、回复检查等。
+* **翻译优化**: 针对复杂的长文本进行优化，AI术语表，COT翻译、动态Few-Shot、提示书编写、联系上下文、文本自适应处理、回复检查等。
 
 ---
 
+## 快速开始 📢
+- 从 [发布页](https://github.com/NEKOparapa/AiNiee/releases) 下载应用并解压运行
+- 准备好要翻译的原文文本文件，并放入`输入文件夹`（默认为应用目录内的 `input` 文件夹）
+  - 大部分 `小说`、`字幕`、`文档` 文件可以直接翻译
+  - 游戏文本需要先使用第三方工具进行提取，比如 [MTool - 使用教程](https://github.com/NEKOparapa/AiNiee/wiki/QuickStartMTool)
+- 选择以下方式之一进行翻译：
+  - 在线接口：需付费但性价比很高，无显卡要求，全语言支持，[接口设置说明 - DeepSeek](https://github.com/NEKOparapa/AiNiee/wiki/QuickStartDeepSeek)
+  - 本地接口：免费，需要 8G+ 显存的 Nvidia 显卡，只支持日中，[接口设置说明 - SakuraLLM](https://github.com/NEKOparapa/AiNiee/wiki/QuickStartSakuraLLM)
+- 绝大部分情况下，这两种方式就是满足你翻译需求的最优解，没特殊需求不需要再去折腾其他的接口了
 
 ##  工具准备[![](https://raw.githubusercontent.com/aregtech/areg-sdk/master/docs/img/pin.svg)](#工具准备)
    
@@ -43,7 +52,7 @@
       |支持平台|模型|白嫖情况|模型价格|限制情况|
       |:-----:|:-----:|:-----:|:-----:|:-----:|
       |[OpenAI平台](https://platform.openai.com/)|ChatGPT系列|现无免费额度|贵|用途广泛|
-      |[GooGle平台](https://makersuite.google.com/app/apikey?hl=zh-cn)|Gemini系列|免费账号可白嫖，速度缓慢|贵|安全限制|
+      |[GooGle平台](https://makersuite.google.com/app/apikey?hl=zh-cn)|Gemini系列|免费账号可白嫖，速度缓慢|贵|用途广泛|
       |[Cohere平台](https://dashboard.cohere.com/)|Command系列|免费账号可白嫖，速度一般|一般|用途广泛|
       |[Anthropic平台](https://console.anthropic.com/dashboard)|Claude系列|免费账号绑卡可白嫖少量额度，速度缓慢|贵|用途广泛|
       |[月之暗面平台](https://platform.moonshot.cn/console/info)|Moonshot系列|注册送少量免费额度|一般|用途广泛|
@@ -51,7 +60,7 @@
       |[智谱平台](https://open.bigmodel.cn/overview)|GLM系列|注册送少量免费额度|一般|安全限制|
       |[Deepseek平台](https://platform.deepseek.com/usage)|Deepseek系列|注册送少量免费额度，速度极快|便宜|用途广泛|
       |[Dashscope平台](https://dashscope.console.aliyun.com/playground) |千问系列|注册送大量免费额度|便宜|安全限制|
-      |[Volcengine平台](https://console.volcengine.com/ark)|豆包系列|注册送大量免费额度，速度极快|便宜|安全限制|
+      |[Volcengine平台](https://console.volcengine.com/ark)|豆包系列|注册送大量免费额度，速度极快|便宜|用途广泛|
       |[SakuraLLM](https://github.com/SakuraLLM/SakuraLLM)  |Sakura系列| 本地模型，需显卡 [点击查看一键包](https://github.com/neavo/SakuraLLMServer) |免费|用途广泛|
 
 
@@ -60,9 +69,9 @@
       |视频链接|说明|
       |:----:|:-----:|
       |[Mtool教程](https://www.bilibili.com/video/BV1h6421c7MA) |初次使用推荐观看|
-      |[T++教程](https://www.bilibili.com/video/BV18c411K7WN?p=2)|初次使用推荐观看|
+      |[Translator++教程](https://www.bilibili.com/video/BV18c411K7WN?p=2)|初次使用推荐观看|
 
-* **`📖 角色提取工具`**: [KeywordGacha - 使用 AI 技术来自动生成 `实体词语表` 的翻译辅助工具](https://github.com/neavo/KeywordGacha)
+* **`📖 角色提取工具`**: [KeywordGacha - 使用 AI 技术来自动生成实体词语表的翻译辅助工具](https://github.com/neavo/KeywordGacha)
 
 * **`💽 本地模型一键包`**: [SakuraLLMServer - 一键获取免费且高质量的日语翻译能力，可提速 3-5 倍](https://github.com/neavo/SakuraLLMServer)
 
@@ -89,7 +98,7 @@
 *  OpenAI官方配置示例:
     > <img src="https://raw.githubusercontent.com/NEKOparapa/AiNiee-chatgpt/main/Example%20image/翻译设置/官方账号设置.png" width="600" height="400"><br>
   
-    >`账号类型`: 新注册的5刀余额账号为免费账号，有各种限制，单号速度不快；付费账号是有过付费记录，且达到一些条件才会升级<br>
+    >`账号类型`: 新注册账号为免费账号，有各种限制，单号速度不快；付费账号是有过付费记录，且达到一些条件才会升级<br>
   
     > `模型选择`: 请自行了解模型之间的区别后再进行更改。<br>
   
@@ -114,9 +123,9 @@
 
     >`每次发送文本上限`: 限制每次发送文本的容量大小，以tokens为单位
   
-    >`每分钟请求数`: RPM (requests per minute)每分钟向openai发送的翻译任务数量
+    >`每分钟请求数`: RPM (requests per minute)每分钟向模型接口发送的翻译任务数量
   
-    >`每分钟tokens数`: TPM (tokens per minute)每分钟向openai发送的tokens总数（类似字符总数）
+    >`每分钟tokens数`: TPM (tokens per minute)每分钟向模型接口发送的tokens总数（类似字符总数）
 
 
 *  SakuraLLM配置:
@@ -150,7 +159,7 @@
   
     >`输出文件夹`: 选择翻译后文件的存储文件夹，请不要和输入文件夹一个路径<br>
 
-    >`自动备份缓存文件`: 会自动备份缓存文件到输出文件夹，高并发情况下会影响速度<br>
+    >`自动备份缓存文件`: 会自动备份缓存文件到输出文件夹<br>
 
     ><img src="https://raw.githubusercontent.com/NEKOparapa/AiNiee-chatgpt/main/Example%20image/翻译设置/发送设置.png" width="600" height="400"><br>
 
@@ -161,8 +170,6 @@
     >`翻译任务并发数`: 请根据翻译平台的速率进行设置，线程数越大，越容易吃满速率限制，翻译速度越快。多出的线程数不会影响翻译，但会增加电脑性能消耗<br>
 
     >`携带上文行数`: 弱小的模型不建议携带上文，且不建议携带过多行数<br>
-
-    >`错误重翻最大次数限制`: 就是一段文本，出现错误回复时，最多允许重复翻译的次数<br>  
     
     >`翻译流程最大轮次限制`: 有些在上一轮始终无法成功翻译的文本会进行拆分，并进入下一轮次翻译，如此循环翻译。所以是限制循环拆分的最大轮次数<br>  
 
@@ -200,7 +207,7 @@
 <details>
 <summary>
   
-### 如果使用MTOOL进行游戏翻译
+### 如果使用 MTool 进行游戏翻译
 </summary>
 
 *  1.使用Mtool打开游戏,并在翻译功能界面,选择导出游戏原文文件,会在游戏根目录生成：ManualTransFile.json<br>
@@ -232,7 +239,7 @@
 <details>
 <summary>
   
-### 如果使用T++进行游戏翻译
+### 如果使用 Translator++ 进行游戏翻译
 </summary>
   
 * 1.🖱️打开`🔴Translator++`,选择“start a new project”,根据你的游戏图标来选择对应的游戏引擎<br>
@@ -283,7 +290,7 @@
 <details>
 <summary>
  
-### 如果使用StevExtraction进行游戏翻译
+### 如果使用 StevExtraction 进行游戏翻译
 </summary>
 
 *  0.工具详情功能及介绍：[工具原作者页面](https://www.ai2moe.org/topic/10271-jt%EF%BC%8C%E7%9B%AE%E6%A0%87%E6%98%AF%E9%9B%B6%E9%97%A8%E6%A7%9B%E7%9A%84%EF%BC%8C%E5%86%85%E5%B5%8C%E4%BA%86%E5%A4%9A%E4%B8%AA%E8%84%9A%E6%9C%AC%E7%9A%84%E9%9D%92%E6%98%A5%E7%89%88t/) 
@@ -347,7 +354,7 @@
 <details>
 <summary> 
 
-## 常用功能说明[![](https://raw.githubusercontent.com/aregtech/areg-sdk/master/docs/img/pin.svg)](#常用功能说明) 
+## 常用功能[![](https://raw.githubusercontent.com/aregtech/areg-sdk/master/docs/img/pin.svg)](#常用功能) 
 </summary>
 
 * ` 多key轮询`
@@ -359,28 +366,40 @@
 * ` 配置迁移`
   >配置信息都会存储在resource的config.json中，下载新版本可以把它复制到新版本的resource中。
   
-* ` 自定义请求格式与模型`
+* ` 自定义模型`
   >在代理平台页面中，选择相应的请求格式，并在模型选择的下拉框中直接输入模型名字，可以自定义组合发送格式与模型。如果想在官方接口调用新模型，需要自行编辑Resource/platform文件夹里的模型信息文件。
 
-* ` 翻译暂停继续`
-  >暂停时请耐心等待提示全部任务暂停完成，暂停后可更换设置，继续后会以新的设置继续翻译
-
-* `自动备份缓存文件到输出文件夹`
+* `缓存文件`
   >当翻译遇到问题时，可以之后更改翻译项目为缓存文件，并在输入文件夹选择该缓存文件所在的文件夹进行继续翻译。当继续翻译Epub小说文件时，还需要把原来的文件和缓存文件放在同一个文件夹里面。开启该功能会因硬盘的写入速度而影响软件的翻译速度，开启超多线程时，可以关闭此功能。
   
-* `导出当前任务的已翻译文件`
+* `导出已翻译文件`
   >会将已经翻译好的内容和未翻译的内容导出。mtool项目与Paratranz项目会分为两个文件，会带有不同的后缀。T++项目会仍然是同一个文件里，已翻译文本的右边会有内容，未翻译的没有。其他项目都会混合在一个文件里输出。
   
 * `指令词典`
   >用来统一名词的翻译，让AI翻译的人名，物品名词，怪物名词，特殊名词能够翻译成你想要的样子。备注信息可写可不写
 
-* `提示书`
+* `提示词优化`
   >用来提高翻译的准确度和流畅性，写好各种内容，配合高性能模型，能够提升翻译的质量
 
-* `AI实时调教`
-  >用来改变AI的参数设定，控制AI生成内容时的随机性，重复性，通常用来解决模型退化，语气词重复的问题
-
+* `调试模式`
+  >软件根目录下创建debug.txt文件，即可触发
   
+</details>
+
+---
+
+<details>
+<summary>
+  
+## 插件说明[![](https://raw.githubusercontent.com/aregtech/areg-sdk/master/docs/img/pin.svg)](#插件说明)  
+</summary>
+
+- [插件 - 代码救星](https://github.com/NEKOparapa/AiNiee/wiki/CodeSaver)
+- [插件 - 标点修复器](https://github.com/NEKOparapa/AiNiee/wiki/PunctuationFixer)
+- [插件 - 语言过滤器](https://github.com/NEKOparapa/AiNiee/wiki/LanguageFilter)
+- [插件 - 文本规范器](https://github.com/NEKOparapa/AiNiee/wiki/TextNormalizer)
+- [插件 - MTool 优化器](https://github.com/NEKOparapa/AiNiee/wiki/MToolOptimizer)
+- [插件 - 指令词典检查器](https://github.com/NEKOparapa/AiNiee/wiki/GlossaryChecker)
 </details>
 
 ---

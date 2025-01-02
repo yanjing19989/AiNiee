@@ -8,24 +8,24 @@ from Widget.ComboBoxCard import ComboBoxCard
 
 class BasicSettingsPage(QFrame, Base):
 
-    DEFAULT = {
-        "lines_limit_switch": True,
-        "tokens_limit_switch": False,
-        "lines_limit": 15,
-        "tokens_limit": 384,
-        "pre_line_counts": 0,
-        "user_thread_counts": 0,
-        "request_timeout": 120,
-        "retry_count_limit": 1,
-        "round_limit": 8,
-    }
-
     def __init__(self, text: str, window):
         super().__init__(window)
         self.setObjectName(text.replace(" ", "-"))
 
-        # 载入配置文件
-        config = self.load_config()
+        # 默认配置
+        self.default = {
+            "lines_limit_switch": False,
+            "tokens_limit_switch": True,
+            "lines_limit": 10,
+            "tokens_limit": 384,
+            "pre_line_counts": 0,
+            "user_thread_counts": 0,
+            "request_timeout": 90,
+            "round_limit": 20,
+        }
+
+        # 载入并保存默认配置
+        config = self.save_config(self.load_config_from_default())
 
         # 设置容器
         self.vbox = QVBoxLayout(self)
@@ -42,7 +42,6 @@ class BasicSettingsPage(QFrame, Base):
         self.vbox.addWidget(Separator())
         self.add_widget_request_timeout(self.vbox, config)
         self.add_widget_06(self.vbox, config)
-        self.add_widget_07(self.vbox, config)
 
         # 填充
         self.vbox.addStretch(1) # 确保控件顶端对齐
@@ -159,7 +158,7 @@ class BasicSettingsPage(QFrame, Base):
         parent.addWidget(
             SpinCard(
                 "每个翻译任务携带的参考上文行数",
-                "启用此功能在大部分情况下可以改善翻译结果，但是会少量降低翻译速度（不支持 Sakura v0.9 模型）",
+                "启用此功能在大部分情况下可以改善长句的翻译质量，但是会降低翻译速度",
                 init = init,
                 value_changed = value_changed,
             )
@@ -185,28 +184,8 @@ class BasicSettingsPage(QFrame, Base):
             )
         )
 
-    # 错误重试的最大次数
-    def add_widget_06(self, parent, config):
-        def init(widget):
-            widget.set_range(0, 9999999)
-            widget.set_value(config.get("retry_count_limit"))
-
-        def value_changed(widget, value: int):
-            config = self.load_config()
-            config["retry_count_limit"] = value
-            self.save_config(config)
-
-        parent.addWidget(
-            SpinCard(
-                "错误重试的最大次数",
-                "当翻译结果未通过验证时，将对翻译任务进行重试，直至获得正确的翻译结果或者达到最大重试次数",
-                init = init,
-                value_changed = value_changed,
-            )
-        )
-
     # 翻译流程的最大轮次
-    def add_widget_07(self, parent, config):
+    def add_widget_06(self, parent, config):
         def init(widget):
             widget.set_range(0, 9999999)
             widget.set_value(config.get("round_limit"))

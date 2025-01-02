@@ -4,7 +4,7 @@ import copy
 import random
 from functools import partial
 
-from PyQt5.Qt import QUrl
+from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QFrame
 from PyQt5.QtWidgets import QVBoxLayout
@@ -73,16 +73,12 @@ class PlatformPage(QFrame, Base):
         ],
     }
 
-    DEFAULT = {}
-
-    def __init__(self, text: str, window, configurator, background_executor = None):
+    def __init__(self, text: str, window):
         super().__init__(window)
         self.setObjectName(text.replace(" ", "-"))
 
         # 全局变量
         self.window = window
-        self.configurator = configurator
-        self.background_executor = background_executor
 
         # 加载并更新预设配置
         self.load_preset()
@@ -123,9 +119,9 @@ class PlatformPage(QFrame, Base):
         # 载入配置文件
         config = self.load_config()
         platform = config.get("platforms").get(tag)
-        if self.configurator.status == Base.STATUS.IDLE:
+        if Base.work_status == Base.STATUS.IDLE:
             # 更新运行状态
-            self.configurator.status = Base.STATUS.API_TEST
+            Base.work_status = Base.STATUS.API_TEST
 
             # 创建事件参数
             data = copy.deepcopy(platform)
@@ -140,7 +136,7 @@ class PlatformPage(QFrame, Base):
     # 接口测试完成
     def api_test_done(self, event: int, data: dict):
         # 更新运行状态
-        self.configurator.status = Base.STATUS.IDLE
+        Base.work_status = Base.STATUS.IDLE
 
         if len(data.get("failure", [])) > 0:
             self.error_toast("", f"接口测试结果：成功 {len(data.get("success", []))} 个，失败 {len(data.get("failure", []))} 个 ...")
@@ -320,7 +316,7 @@ class PlatformPage(QFrame, Base):
     def add_head_widget(self, parent, config):
         def init(widget):
             # 添加按钮
-            help_button = PushButton("帮助")
+            help_button = PushButton("教程")
             help_button.setIcon(FluentIcon.HELP)
             help_button.setContentsMargins(4, 0, 4, 0)
             help_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/neavo/SakuraLLMServer")))

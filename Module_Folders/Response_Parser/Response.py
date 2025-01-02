@@ -20,8 +20,40 @@ class Response_Parser():
 
         # 尝试正则提取
         try:
+    
+            parsed_dict = {}
+            key = None
+            key_pattern = r'("\d+?"\s*:\s*)'     #按key的位置进行切割
+            lines = re.split(key_pattern, input_str)
+            
+            for i, line in enumerate(lines):
 
-            # 使用正则表达式匹配字符串中的所有键值对
+                # 先寻找到key的值
+                if re.match(key_pattern, line):
+                    key = re.findall(r'\d+', line)[0] 
+                    continue
+
+                if not key:continue
+                
+                # 在寻找value的值
+                if len(lines) >= 2 and i == len(lines) - 1: # 检查是否是最后一行且lines长度大于等于两行
+                    # 使用非贪婪匹配，防止话痨AI在后面再次触发切割位置
+                    value = re.findall(r'"([\S\s]+?)"(?=,|}|\n)', line)
+                else: # 其他一般情况
+                    # 使用贪婪匹配
+                    value = re.findall(r'"([\S\s]+)"(?=,|}|\n)', line)
+                
+                if value:
+                    # 直接添加或覆盖键值对，不再检查键是否已存在，以最后的翻译结果为准。（配合cot翻译）
+                    parsed_dict[key] = value[0]
+
+                # 清空赋值
+                key = None
+
+            return parsed_dict
+
+
+            # 使用正则表达式匹配字符串中的所有键值对（旧）
             parsed_dict = {}
             key = None
             key_pattern = r'("\d+?"\s*:\s*)'
@@ -33,12 +65,14 @@ class Response_Parser():
                 if not key: continue
                 value = re.findall(r'"([\S\s]+)"(?=,|}|\n)', line)
                 if value:
-                    if key not in parsed_dict:
-                        parsed_dict[key] = value[0]
+                    # 直接添加或覆盖键值对，不再检查键是否已存在，以最后的翻译结果为准。（配合cot翻译）
+                    parsed_dict[key] = value[0]
                 key = None
 
 
             return parsed_dict
+
+
         except :
             print("\033[1;33mWarning:\033[0m 回复内容无法正常提取，请反馈\n")
             return {}
@@ -82,7 +116,7 @@ class Response_Parser():
 
         # 检查模型是否退化，出现高频词
         if 'Model Degradation Check' in reply_check_switch and reply_check_switch['Model Degradation Check']:
-            if Response_Parser.model_degradation_detection(self,response_str):
+            if Response_Parser.model_degradation_detection(self,source_text_dict,response_str):
                 pass
 
             else:
@@ -142,6 +176,8 @@ class Response_Parser():
 
     # 检查两个字典是否完全相同，即返回了原文
     def check_dicts_equal(self,dict1, dict2):
+
+        # 不检测双行及以下
         if len(dict1) >=3 :
             i = 0
             s = 0
@@ -152,18 +188,32 @@ class Response_Parser():
                 set1 = set(value)
                 set2 = set(value2)
 
+
+                # 定义日本汉字的Unicode范围（这是一个大致范围，可能需要调整）
+                kanji_start = 0x4E00
+                kanji_end = 0x9FFF
+
+                # 剔除原文集合中的汉字
+                set1_test = {char for char in set1 if not (kanji_start <= ord(char) <= kanji_end)}
+                #set2 = {char for char in set2 if not (kanji_start <= ord(char) <= kanji_end)}
+
+                # 如果原文集合为空，说明原文全是汉字，则跳过此行的计算
+                if not set1_test:
+                    continue
+
                 # 计算交集和并集的大小
                 intersection_size = len(set1.intersection(set2))
                 union_size = len(set1.union(set2))
 
-                # 计算Jaccard相似系数
+                # 计算单个文本行的Jaccard相似系数
                 similarity = intersection_size / union_size
 
                 #累加与累计
                 i = i + 1
                 s = s + similarity
 
-            result = s/i
+            # 计算总体相似度，并防止除到0
+            result = s / i if i != 0 else 0
 
             if (result>= 0.85):
                 return False
@@ -172,6 +222,10 @@ class Response_Parser():
 
         else:
             return True
+
+
+
+
 
     # 检查回复内容的文本行数
     def check_text_line_count(self, source_dict, response_dict):
@@ -201,7 +255,7 @@ class Response_Parser():
 
 
     # 模型退化检测，高频语气词
-    def model_degradation_detection(self, s, count=80):
+    def model_degradation_detection(self,source_text_dict, s, count=80):
         """
         检查字符串中是否存在任何字符连续出现指定次数。
 
@@ -209,6 +263,12 @@ class Response_Parser():
         :param count: 需要检查的连续次数，默认为80
         :return: 如果存在字符连续出现指定次数，则返回False，否则返回True
         """
+
+        # 不检测单行
+        if len(source_text_dict) ==1 :
+           return True
+
+
         for i in range(len(s) - count + 1):
             if len(set(s[i:i+count])) == 1:
                 return False
@@ -226,14 +286,24 @@ class Response_Parser():
         if language == "英语" or language == "俄语":
             return True
 
+        # 避免检查单或者少行字典
+        if len(dict1) <=5 :
+            return True
+
         # 不同语言的标点符号字符集
-        punctuation_sets = {
-            '日语': r'[\u3000-\u303F\uFF01-\uFF9F]',  # 日文标点符号
-            '韩语': r'[\u314F-\u3163\uFF61-\uFF9F]',  # 韩文标点符号和半角标点符号
-            '俄语': r'[\u0400-\u04FF\u0500-\u052F]',  # 俄语字母和扩展字符（含标点）
-            '简中': r'[\u3000-\u303F]',  # 中文标点符号
-            '繁中': r'[\u3000-\u303F]',  # 中文标点符号
-        }
+        punctuation_sets = re.compile(
+            r'['
+            r'\u3000-\u303F'   # CJK符号和标点
+            r'\uFF01-\uFF9F'   # 全角ASCII、半角片假名和日文标点
+            r'\u314F-\u3163'   # 韩文标点符号
+            r'\u0400-\u04FF'   # 俄语字母
+            r'\u0500-\u052F'   # 俄语扩展字符（含标点）
+            r']+', re.UNICODE  # 使用 + 来匹配一个或多个字符
+        )
+
+        # 特定的无法过滤的标点符号集
+        punctuation_list_A = ['(', ')', '・', '?', '·', '～', 'ー']  
+
         # 定义不同语言的文本字符集对应的正则表达式
         patterns_all = {
             '日语': re.compile(
@@ -267,7 +337,7 @@ class Response_Parser():
         }
         # 根据语言选择合适的正则表达式
         pattern = patterns_all.get(language)
-        punctuation_pattern = punctuation_sets.get(language)
+        punctuation_pattern = punctuation_sets
         if not pattern:
             raise ValueError("Unsupported language")
 
@@ -280,19 +350,35 @@ class Response_Parser():
             if key2 in dict1:
                 # 提取字典1值中的文本
                 text1 = dict1[key2]
-                # 移除字典2值中的标点符号
-                text2_clean = re.sub(punctuation_pattern, '', value2)
+                # 移除字典2值中的各种通用的标点符号
+                text2_clean1 = re.sub(punctuation_pattern, '', value2)
+                # 移除字典2值中的特定的标点符号
+                text2_clean2 = Response_Parser.remove_punctuation(self,text2_clean1, punctuation_list_A)
                 # 提取字典2值中的指定语言的文本
-                text2 = pattern.findall(text2_clean)
+                text2 = pattern.findall(text2_clean2)
+                # 提取为空内容，则跳过
+                if text2 =='':
+                    continue
                 # 将列表转换为字符串
                 text2_str = ''.join(text2)
                 # 如果字典2中的残留文本在字典1中的文本中出现，则计数加1
                 if text2_str and (text2_str in text1):
                     count_results += 1
 
-        # 避免检查单或者少行字典
-        if len(dict2) >5 :
-            if  count_results >=2:
-                return False
+        # 根据出现次数判断结果
+        if  count_results >=2:
+            return False
 
         return True
+    
+    # 辅助函数
+    def remove_punctuation(self,input_string, punctuation_list):
+        """
+        移除输入字符串中所有属于标点符号列表的字符。
+
+        :param input_string: 要移除标点的字符串。
+        :param punctuation_list: 需要移除的标点符号列表。
+        :return: 移除了指定标点的新字符串。
+        """
+        result = ''.join(char for char in input_string if char not in punctuation_list)
+        return result
