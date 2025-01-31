@@ -189,18 +189,6 @@ class Response_Parser():
                 set2 = set(value2)
 
 
-                # 定义日本汉字的Unicode范围（这是一个大致范围，可能需要调整）
-                kanji_start = 0x4E00
-                kanji_end = 0x9FFF
-
-                # 剔除原文集合中的汉字
-                set1_test = {char for char in set1 if not (kanji_start <= ord(char) <= kanji_end)}
-                #set2 = {char for char in set2 if not (kanji_start <= ord(char) <= kanji_end)}
-
-                # 如果原文集合为空，说明原文全是汉字，则跳过此行的计算
-                if not set1_test:
-                    continue
-
                 # 计算交集和并集的大小
                 intersection_size = len(set1.intersection(set2))
                 union_size = len(set1.union(set2))
@@ -302,7 +290,7 @@ class Response_Parser():
         )
 
         # 特定的无法过滤的标点符号集
-        punctuation_list_A = ['(', ')', '・', '?', '·', '～', 'ー']  
+        punctuation_list_A = ['(', ')', '・', '?', '？', '『', '』', '（', '）', '＜', '＞', '·', '～', 'ー', '@', '＠', '·', '.', '♡']  
 
         # 定义不同语言的文本字符集对应的正则表达式
         patterns_all = {

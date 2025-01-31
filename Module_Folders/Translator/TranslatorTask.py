@@ -9,7 +9,7 @@ from rich.table import Table
 
 from Base.Base import Base
 from Base.PluginManager import PluginManager
-from Module_Folders.PromptBuilder import PromptBuilder
+from Module_Folders.PromptBuilder.PromptBuild import PromptBuilder
 from Module_Folders.Cache.CacheItem import CacheItem
 from Module_Folders.Translator.TranslatorConfig import TranslatorConfig
 from Module_Folders.Translator.TranslatorRequester import TranslatorRequester
@@ -65,6 +65,10 @@ class TranslatorTask(Base):
 
         SPACE_PATTERN + r'class=".*?">(?!<)' + SPACE_PATTERN,                         # class="toc1"><a href="18_Chapter08.html">正文</a>或者class="toc1">>正文， epub小说的跳转目录
         SPACE_PATTERN + r"</a>" + SPACE_PATTERN,                                      # 是以“class=”开头，中间任意内容，然后以“">”结束，“">”尽可能后面，且不是跟着<。
+
+        SPACE_PATTERN + r"\\SE\[.{0,15}?\]" + SPACE_PATTERN,                          # se控制代码    
+
+        SPACE_PATTERN + r'【\\[A-Za-z]+\[[^]]*】\\SE\[[^]]*\]'+ SPACE_PATTERN,        #【\N[1]】\SE[xxx]    
     )
 
     def __init__(self, config: TranslatorConfig, plugin_manager: PluginManager, request_limiter: Request_Limiter) -> None:
@@ -112,8 +116,7 @@ class TranslatorTask(Base):
 
         # 发起请求
         requester = TranslatorRequester(self.config, self.plugin_manager)
-        skip, response_str, prompt_tokens, completion_tokens = requester.request(self.messages, self.system_prompt, degradation_flag)
-
+        skip, response_str, prompt_tokens, completion_tokens, response_think = requester.request(self.messages, self.system_prompt, degradation_flag)
         # 如果请求结果标记为 skip，即有错误发生，则跳过本次循环
         if skip == True:
             return {
@@ -150,38 +153,13 @@ class TranslatorTask(Base):
                 error = f"译文文本未通过检查，将在下一轮次的翻译中重新翻译 - {error_content}"
 
             # 打印任务结果
-            self.print(
-                self.generate_log_table(
-                    *self.generate_log_rows(
-                        error,
-                        task_start_time,
-                        prompt_tokens,
-                        completion_tokens,
-                        self.source_text_dict.values(),
-                        response_dict.values(),
-                        self.extra_log
-                    )
-                )
-            )
+            if self.config.switch_debug_mode:
+                response_think_log = "[AI思考过程]\n"  + response_think
+                response_str_log = "[AI回复内容]\n"  + response_str
 
-            # 打印调试用日志
-            if self.is_debug():
-                print("AI回复内容:")
-                print(response_str)
+                self.extra_log.append(response_think_log)
+                self.extra_log.append(response_str_log)
 
-        else:
-            # 各种还原步骤
-            # 先复制一份，以免影响原有数据，response_dict 为字符串字典，所以浅拷贝即可
-            restore_response_dict = copy.copy(response_dict)
-            restore_response_dict = self.restore_all(restore_response_dict, self.prefix_codes, self.suffix_codes)
-
-            # 更新缓存数据
-            for item, response in zip(self.items, restore_response_dict.values()):
-                item.set_model(self.config.model)
-                item.set_translated_text(response)
-                item.set_translation_status(CacheItem.STATUS.TRANSLATED)
-
-            # 打印任务结果
             self.print(
                 self.generate_log_table(
                     *self.generate_log_rows(
@@ -196,10 +174,41 @@ class TranslatorTask(Base):
                 )
             )
 
-            # 打印调试用日志
-            if self.is_debug():
-                print("AI回复内容:")
-                print(response_str)
+        else:
+            # 各种还原步骤
+            # 先复制一份，以免影响原有数据，response_dict 为字符串字典，所以浅拷贝即可
+            restore_response_dict = copy.copy(response_dict)
+            restore_response_dict = self.restore_all(restore_response_dict, self.prefix_codes, self.suffix_codes)
+
+            # 更新缓存数据
+            for item, response in zip(self.items, restore_response_dict.values()):
+                item.set_model(self.config.model)
+                item.set_translated_text(response)
+                item.set_translation_status(CacheItem.STATUS.TRANSLATED)
+
+            # 打印任务结果
+            if self.config.switch_debug_mode:
+                response_think_log = "[AI思考过程]\n"  + response_think
+                response_str_log = "[AI回复内容]\n"  + response_str
+
+                self.extra_log.append(response_think_log)
+                self.extra_log.append(response_str_log)
+
+            self.print(
+                self.generate_log_table(
+                    *self.generate_log_rows(
+                        "",
+                        task_start_time,
+                        prompt_tokens,
+                        completion_tokens,
+                        self.source_text_dict.values(),
+                        response_dict.values(),
+                        self.extra_log
+                    )
+                )
+            )
+
+
 
 
         # 当重试标识为 True 时，重新发起请求
@@ -401,6 +410,15 @@ class TranslatorTask(Base):
                 system_prompt += writing_style
                 extra_log.append(f"行文措辞要求已添加：\n{writing_style}")
 
+
+        # 如果启用翻译风格示例功能
+        if self.config.translation_example_switch:
+            translation_example = PromptBuilder.build_translation_example(self.config)
+            if translation_example:
+                system_prompt += translation_example
+                extra_log.append(f"翻译示例已添加：\n{translation_example}")
+
+
         # 获取默认示例前置文本
         pre_prompt = PromptBuilder.build_userExamplePrefix(self.config)
         fol_prompt = PromptBuilder.build_modelExamplePrefix(
@@ -411,7 +429,7 @@ class TranslatorTask(Base):
             writing_style_cot
         )
 
-        # 获取默认示例
+        # 获取默认示例，并构建动态few-shot
         original_exmaple, translation_example_content = PromptBuilder.build_translation_sample(self.config, source_text_dict)
         if original_exmaple and translation_example_content:
             messages.append({
@@ -425,22 +443,7 @@ class TranslatorTask(Base):
             extra_log.append(f"格式原文示例已添加：\n{original_exmaple}")
             extra_log.append(f"格式译文示例已添加：\n{translation_example_content}")
 
-        # 如果启用翻译风格示例功能
-        if self.config.translation_example_switch:
-            original_exmaple_3, translation_example_3 = PromptBuilder.build_translation_example(self.config)
-            if original_exmaple_3 and translation_example_3:
-                messages.append({
-                    "role": "user",
-                    "content": original_exmaple_3
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": translation_example_3
-                })
-                extra_log.append(f"用户原文示例已添加：\n{original_exmaple_3}")
-                extra_log.append(f"用户译文示例已添加：\n{translation_example_3}")
-
-        # 如果加上文
+        # 如果加上文，获取上文内容
         previous = ""
         if self.config.pre_line_counts and previous_text_list:
             previous = PromptBuilder.build_pre_text(self.config, previous_text_list)
@@ -449,24 +452,28 @@ class TranslatorTask(Base):
 
         # 获取提问时的前置文本
         pre_prompt = PromptBuilder.build_userQueryPrefix(self.config)
+        # 获取模型预输入回复前文
         fol_prompt = PromptBuilder.build_modelResponsePrefix(self.config)
 
-        # 构建用户信息
+        # 构建待翻译文本
         source_text_str = json.dumps(source_text_dict, ensure_ascii = False)
         source_text_str = f"{previous}\n{pre_prompt}```json\n{source_text_str}\n```"
 
+        # 构建用户提问信息
         messages.append(
             {
                 "role": "user",
                 "content": source_text_str,
             }
         )
+
+        # 构建模型预输入回复信息
         messages.append(
-            {
-                "role": "assistant",
-                "content": fol_prompt
-            }
-        )
+        {
+            "role": "assistant",
+            "content": fol_prompt
+        }
+        )  #deepseek-reasoner不支持该模型预回复消息
 
         # 当目标为 google 系列接口时，转换 messages 的格式
         # 当目标为 anthropic 兼容接口时，保持原样

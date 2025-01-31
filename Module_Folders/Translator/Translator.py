@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from Base.Base import Base
 from Base.PluginManager import PluginManager
-from Module_Folders.PromptBuilder import PromptBuilder
+from Module_Folders.PromptBuilder.PromptBuild import PromptBuilder
 from Module_Folders.Cache.CacheItem import CacheItem
 from Module_Folders.Cache.CacheManager import CacheManager
 from Module_Folders.Translator.TranslatorTask import TranslatorTask
@@ -371,7 +371,4 @@ class Translator(Base):
             # 触发翻译进度更新事件
             self.emit(Base.EVENT.TRANSLATION_UPDATE, self.data)
         except Exception as e:
-            if self.is_debug():
-                self.error("翻译任务错误 ...", e)
-            else:
                 self.error(f"翻译任务错误 ... {e}", None)

@@ -59,6 +59,7 @@ class AppSettingsPage(QWidget, Base):
         # 添加控件
         self.add_widget_proxy(self.vbox, config)
         self.add_widget_font_hinting(self.vbox, config)
+        self.add_switch_debug_mode(self.vbox, config)
         self.add_widget_scale_factor(self.vbox, config)
         self.add_widget_app_profile(self.vbox, config, window)
 
@@ -120,6 +121,36 @@ class AppSettingsPage(QWidget, Base):
                 checked_changed = checked_changed,
             )
         )
+
+    # 调整模式开关
+    def add_switch_debug_mode(self, parent, config):
+        def init(widget):
+            # 如果配置文件有该字段，且为真
+            if config.get("switch_debug_mode"):
+                switch_value = True
+            
+            # 如果配置文件没有该字段，或者该字段为假，则重新写入
+            else:
+                switch_value = False
+                config["switch_debug_mode"] = switch_value
+                self.save_config(config)
+
+            widget.set_checked(switch_value)
+
+        def checked_changed(widget, checked: bool):
+            config = self.load_config()
+            config["switch_debug_mode"] = checked
+            self.save_config(config)
+
+        parent.addWidget(
+            SwitchButtonCard(
+                "调试模式开关",
+                "启用此功能后，日志表格会添加完整的AI回复内容",
+                init = init,
+                checked_changed = checked_changed,
+            )
+        )
+
 
     # 全局缩放比例
     def add_widget_scale_factor(self, parent, config):
