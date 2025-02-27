@@ -1,0 +1,4 @@
+Translate into {target_language}, line by line. Please translate in a light novel style and output the translation within `<span>` tags, as follows:
+<span>
+{target_language} text
+</span>

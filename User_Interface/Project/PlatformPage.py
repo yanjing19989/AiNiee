@@ -23,7 +23,8 @@ from User_Interface.Project.ArgsEditPage import ArgsEditPage
 from User_Interface.Project.LimitEditPage import LimitEditPage
 
 class PlatformPage(QFrame, Base):
-
+    
+    # 自定义平台默认配置
     CUSTOM = {
         "tag": "",
         "group": "custom",
@@ -32,14 +33,14 @@ class PlatformPage(QFrame, Base):
         "api_key": "",
         "api_format": "OpenAI",
         "rpm_limit": 4096,
-        "tpm_limit": 4096000,
-        "token_limit": 4096,
+        "tpm_limit": 8000000,
+        "token_limit": 8000,
         "model": "gpt-4o",
         "top_p": 1.0,
         "temperature": 1.0,
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
-        "account": "",
+        "account": "免费账号",
         "auto_complete": True,
         "model_datas": [
             "gpt-4o",
@@ -171,8 +172,8 @@ class PlatformPage(QFrame, Base):
                 if platform.get(k, None) == None:
                     platform[k] = v
 
-                # 如果字段不属于用户自定义字段，且不在保护字段范围内，则使用预设数据更新该字段的值
-                if k not in self.CUSTOM.get("key_in_settings", []) and k not in ("tag", "name", "group"):
+                # 如果字段不属于用户自定义字段，且不在保护字段范围内，则使用预设数据更新该字段的值！！！
+                if k not in self.CUSTOM.get("key_in_settings", []) and k not in ("tag", "name", "group","model_datas"):
                     platform[k] = v
 
         # 汇总数据并更新配置数据中的接口信息
@@ -220,7 +221,7 @@ class PlatformPage(QFrame, Base):
                             ),
                             # (
                             #     FluentIcon.SCROLL,
-                            #     "编辑限额",
+                            #     "编辑限速",
                             #     partial(self.show_limit_edit_page, k),
                             # ),
                             (
@@ -243,7 +244,7 @@ class PlatformPage(QFrame, Base):
                             ),
                             (
                                 FluentIcon.SCROLL,
-                                "编辑限额",
+                                "编辑限速",
                                 partial(self.show_limit_edit_page, k),
                             ),
                             (
@@ -312,7 +313,7 @@ class PlatformPage(QFrame, Base):
             self.generate_ui_datas(platforms, True)
         )
 
-    # 添加头部
+    # 添加头部-本地接口
     def add_head_widget(self, parent, config):
         def init(widget):
             # 添加按钮
@@ -337,7 +338,7 @@ class PlatformPage(QFrame, Base):
             )
         )
 
-    # 添加主体
+    # 添加主体-在线接口
     def add_body_widget(self, parent, config):
         platforms = {k:v for k, v in config.get("platforms").items() if v.get("group") == "online"}
         parent.addWidget(
@@ -351,7 +352,7 @@ class PlatformPage(QFrame, Base):
             )
         )
 
-    # 添加底部
+    # 添加底部-自定义接口
     def add_foot_widget(self, parent, config):
 
         def message_box_close(widget, text: str):

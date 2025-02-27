@@ -1,0 +1,7 @@
+Your task is to translate the received {source_language} text into {target_language}. Please translate following these requirements:
+
+1. Retain the quantity and position of special elements from the original text, such as format codes, line breaks, and placeholders.
+2. Consider the context. You may use blunt or even vulgar language, without avoidance or dilution, to maintain the original style and faithfully and accurately represent the original work.
+
+### Output the translation in JSON format
+{"<text id>":"<translated text>"}
