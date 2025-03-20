@@ -1,0 +1,147 @@
+name: 错误报告 | Bug Report
+description: 异常问题反馈模板
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请按照实际情况填写这个反馈模板，带*的为必填项
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 问题描述
+      description: Please provide a detailed description of the bug.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本
+      description: 填入使用的软件版本号
+    validations:
+      required: false
+
+  - type: input
+    id: api
+    attributes:
+      label: 接口平台
+      description: 填入使用的接口平台
+    validations:
+      required: false
+
+  - type: input
+    id: api-url
+    attributes:
+      label: 接口地址
+      description: 使用官方在线接口时不用填写
+    validations:
+      required: false
+
+  - type: input
+    id: api-format
+    attributes:
+      label: 接口格式
+      description: 使用官方在线接口时不用填写
+    validations:
+      required: false
+
+  - type: input
+    id: model-name
+    attributes:
+      label: 模型名称
+      description: 详细的型号
+    validations:
+      required: true
+
+  - type: input
+    id: project-type
+    attributes:
+      label: 项目类型
+    validations:
+      required: true
+
+  - type: input
+    id: source-language
+    attributes:
+      label: 原文语言
+    validations:
+      required: true
+
+  - type: input
+    id: target-language
+    attributes:
+      label: 译文语言
+    validations:
+      required: true
+
+  - type: dropdown
+    id: translation-split-mode
+    attributes:
+      label: 翻译任务切分模式
+      description: 基础设置中设置的翻译任务切分模式(下面的根据这个填写)
+      options:
+        - 行数模式
+        - Token模式
+    validations:
+      required: true
+
+  - type: input
+    id: translation-line-count
+    attributes:
+      label: 翻译任务的具体切分数
+      description: 基础设置中翻译任务的文本行数或者token数量
+    validations:
+      required: false
+
+
+  - type: input
+    id: parallel-tasks
+    attributes:
+      label: 并行翻译任务数
+      description: 基础设置中设置的并发任务数
+    validations:
+      required: true
+
+
+  - type: dropdown
+    id: prompt-mode
+    attributes:
+      label: 提示词预设
+      description: 提示词设置的基础提示词预设
+      options:
+        - 通用
+        - 思维链
+        - 推理模型
+        - 自定义提示词
+    validations:
+      required: true
+    
+
+  - type: textarea
+    id: prompt-content
+    attributes:
+      label: 提示词内容
+      description: 如果启用了自定义提示词，请在此填写具体内容
+    validations:
+      required: false
+
+
+  - type: textarea
+    id: error-log
+    attributes:
+      label: 报错日志
+      description: 复制出错日志内容或者截图
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 额外补充
+      description: 如有其他需要补充的信息，请在此说明
+      placeholder: 请详细描述其他相关信息...
+    validations:
+      required: false
