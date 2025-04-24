@@ -1,173 +1,174 @@
 import json
-import os
+from pathlib import Path
+
+# 假定这些导入相对于项目结构是正确的
+from ModuleFolders.Cache.CacheItem import CacheItem
+from ModuleFolders.FileOutputer.BaseWriter import (
+    BaseTranslatedWriter,
+    OutputConfig
+)
 
 
-class VntWriter():
-    def __init__(self):
-        pass
-
-    # 输出vnt文件
-    def output_vnt_file(self,cache_data, output_path):
-
-        # 输出文件格式示例
-        ex_output =  [
+class VntWriter(BaseTranslatedWriter):
+    """输出Vnt格式文件的写入器。
+       输出文件格式示例
+        [
             {
-                "name": "玲",
-                "message": "「……おはよう」"
+                "names": ["玲","女人"], # 可能包含 'names' 列表
+                "message": "「……」"
             },
             {
+                "name": "玲", # 或者可能包含 'name' 字符串
+                "message": "「……おはよう」"
+            },
+            { # 或者两者都没有
                 "message": "　心の内では、ムシャクシャした気持ちは未だに鎮まっていなかった。"
             }
-            ]
+        ]
+    """
+    def __init__(self, output_config: OutputConfig):
+        super().__init__(output_config)
 
-        # 创建中间存储字典，这个存储已经翻译的内容
-        path_dict = {}
+    def write_translated_file(
+        self, translation_file_path: Path, items: list[CacheItem],
+        source_file_path: Path = None
+    ):
+        output_list = []
+        # 转换中间字典的格式为最终输出格式
+        for item in items:
+            # 一次性获取翻译后的文本
+            translated_text_full = item.get_translated_text()
+            text = None # 初始化text字典
 
-        # 遍历缓存数据
-        for item in cache_data:
-            # 忽略不包含 'storage_path' 的项
-            if 'storage_path' not in item:
-                continue
+            # --- 首先检查 'names' ---
+            original_names = getattr(item, "names", None)
+            # 确保它是一个非空列表
+            if isinstance(original_names, list) and original_names:
+                # 处理 'names' 字段
+                updated_names, remaining_message = self.extract_multiple_names_from_text(
+                    original_names, translated_text_full
+                )
+                text = {"names": original_names, "message": remaining_message}
 
-            # 获取相对文件路径
-            storage_path = item['storage_path']
-            # 获取文件名
-            file_name = item['file_name']
+            # --- 如果 'names' 未被处理，则检查 'name' ---
+            elif text is None and getattr(item, "name", None):
+                 # 处理 'name' 字段（使用原始逻辑）
+                original_name = item.name
+                # 处理前确保 name 不为空
+                if original_name:
+                    updated_name, remaining_message = self.extract_strings(
+                        original_name, translated_text_full
+                    )
+                    text = {"name": original_name, "message": remaining_message}
+                else: # 处理 'name' 属性存在但为空的情况
+                     text = {"message": translated_text_full}
 
-            if file_name != storage_path :
-                # 构建文件输出路径
-                file_path = f'{output_path}/{storage_path}'
-                # 获取输出路径的上一级路径，使用os.path.dirname
-                folder_path = os.path.dirname(file_path)
-                # 如果路径不存在，则创建
-                os.makedirs(folder_path, exist_ok=True)
-            else:
-                # 构建文件输出路径
-                file_path = f'{output_path}/{storage_path}'
+            # --- 后备处理：没有 'name' 或 'names' ---
+            # 如果 text 仍然是 None，表示既没有找到 'names' 也没有找到 'name' 或它们未被成功处理
+            if text is None:
+                text = {"message": translated_text_full}
 
+            output_list.append(text)
 
-
-            # 如果文件路径已经在 path_dict 中，添加到对应的列表中
-            if file_path in path_dict:
-                if'name' in item:
-                    text = {'translation_status': item['translation_status'],
-                            'source_text': item['source_text'],
-                            'translated_text': item['translated_text'],
-                            'name': item['name']}
-
-                else:
-                    text = {'translation_status': item['translation_status'],
-                            'source_text': item['source_text'],
-                            'translated_text': item['translated_text']}
-
-                path_dict[file_path].append(text)
-
-            # 否则，创建一个新的列表
-            else:
-                if'name' in item:
-                    text = {'translation_status': item['translation_status'],
-                            'source_text': item['source_text'],
-                            'translated_text': item['translated_text'],
-                            'name': item['name']}
-
-                else:
-                    text = {'translation_status': item['translation_status'],
-                            'source_text': item['source_text'],
-                            'translated_text': item['translated_text']}
-
-                path_dict[file_path] = [text]
-
-        # 遍历 path_dict，并将内容写入文件
-        for file_path, content_list in path_dict.items():
-
-            # 提取文件路径的文件夹路径和文件名
-            folder_path, old_filename = os.path.split(file_path)
+        # --- 写入文件 ---
+        json_content = json.dumps(output_list, ensure_ascii=False, indent=4)
+        translation_file_path.write_text(json_content, encoding="utf-8")
 
 
-            # 创建已翻译文本的新文件路径
-            if old_filename.endswith(".json"):
-                file_name_translated = old_filename.replace(".json", "") + "_translated.json"
-            else:
-                file_name_translated = old_filename + "_translated.json"
-            file_path_translated = os.path.join(folder_path, file_name_translated)
+    def extract_multiple_names_from_text(self, original_names: list[str], dialogue: str) -> tuple[list[str], str]:
+        """
+        从对话字符串的开头提取多个方括号括起来的名称，
+        基于 original_names 列表中的名称数量。
+
+        Args:
+            original_names: 原始名称列表（用于确定数量）。
+            dialogue: 翻译后的文本，可能以方括号括起来的名称开头。
+
+        Returns:
+            一个元组，包含：
+            - list[str]: 提取出的名称列表（如果提取失败则为原始名称列表）。
+            - str: 提取名称后剩余的对话文本。
+        """
+        num_names_to_extract = len(original_names) # 需要提取的名称数量
+        extracted_names = []
+        current_pos = 0
+        last_bracket_end = 0
+
+        for i in range(num_names_to_extract):
+            # 查找下一个潜在名称块的开始位置 '['，跳过前导空格
+            start_bracket_pos = -1
+            temp_pos = current_pos
+            while temp_pos < len(dialogue):
+                if dialogue[temp_pos] == '[':
+                    start_bracket_pos = temp_pos
+                    break
+                elif not dialogue[temp_pos].isspace():
+                    # 在找到 '[' 之前遇到了非空白字符，此模式的提取失败
+                    return original_names, dialogue # 回退到原始值
+                temp_pos += 1
+
+            if start_bracket_pos == -1:
+                 # 未找到足够的起始方括号 '['
+                return original_names, dialogue # 回退到原始值
+
+            # 查找对应的结束方括号 ']'
+            end_bracket_pos = dialogue.find("]", start_bracket_pos + 1)
+            if end_bracket_pos == -1:
+                # 未找到结束方括号 ']'
+                return original_names, dialogue # 回退到原始值
+
+            # 提取名称内容
+            name_content = dialogue[start_bracket_pos + 1 : end_bracket_pos]
+            extracted_names.append(name_content)
+
+            # 更新下一次搜索的位置
+            current_pos = end_bracket_pos + 1
+            last_bracket_end = current_pos # 记录最后一个方括号结束的位置
+
+        # 提取完所有名称后，剩余的对话从最后一个方括号之后开始
+        remaining_dialogue = dialogue[last_bracket_end:].lstrip()
+
+        # 检查是否成功提取了预期数量的名称
+        if len(extracted_names) == num_names_to_extract:
+            return extracted_names, remaining_dialogue
+        else:
+            # 如果出现问题则回退（应该在前面被捕获，但作为安全措施）
+            return original_names, dialogue
 
 
-            # 创建未翻译文本的新文件路径
-            if old_filename.endswith(".json"):
-                file_name_untranslated = old_filename.replace(".json", "") + "_untranslated.json"
-            else:
-                file_name_untranslated = old_filename + "_untranslated.json"
-            file_path_untranslated = os.path.join(folder_path, file_name_untranslated)
-
-            # 存储已经翻译的文本
-            output_file = []
-
-            #存储未翻译的文本
-            output_file2 = []
-
-            # 转换中间字典的格式为最终输出格式
-            for content in content_list:
-                # 如果这个本已经翻译了，存放对应的文件中
-                if'name' in content:
-
-                    # 提取原来人名与文本
-                    name =  content['name']
-                    translated_text = content['translated_text']
-                    
-                    # 分割人名与文本
-                    name,translated_text = VntWriter.extract_strings(self, name, translated_text)
-
-                    # 构建字段
-                    text = {'name': name,
-                            'message': translated_text}
-                else:
-                    text = {'message': content['translated_text']}
-
-                output_file.append(text)
-
-                # 如果这个文本没有翻译或者正在翻译
-                if content['translation_status'] == 0 or content['translation_status'] == 2:
-                    if'name' in content:
-
-                        # 提取原来人名与文本
-                        name =  content['name']
-                        translated_text = content['translated_text']
-                        
-                        # 分割人名与文本
-                        name,translated_text = VntWriter.extract_strings(self, name, translated_text)
-
-                        # 构建字段
-                        text = {'name': name,
-                                'message': translated_text}
-                    else:
-                        text = {'message': content['translated_text']}
-
-                    output_file2.append(text)
-
-
-            # 输出已经翻译的文件
-            with open(file_path_translated, 'w', encoding='utf-8') as file:
-                json.dump(output_file, file, ensure_ascii=False, indent=4)
-
-            # 输出未翻译的内容
-            if output_file2:
-                with open(file_path_untranslated, 'w', encoding='utf-8') as file:
-                    json.dump(output_file2, file, ensure_ascii=False, indent=4)
-
-
+    # 处理 'name' 字段的情况
     def extract_strings(self, name, dialogue):
-        # 检查是否以【开头
-        if dialogue.startswith("【"):
-            name_len = len(name)
-            # 计算需要检查的字符范围（原人名长度 + 5）
-            check_range = name_len + 5
-            # 在限定范围内查找】的位置
-            end_pos = dialogue.find("】", 0, check_range)
-            
-            if end_pos != -1:
-                # 提取新人名并保留剩余文本
-                return (dialogue[1:end_pos], 
-                        dialogue[end_pos+1:].lstrip())
-                        
-        # 不满足条件时返回原参数
+        """
+        根据原始名称中的方括号数量，从对话文本中提取单个名称部分，
+        遵循原始实现逻辑。
+        """
+        if dialogue.startswith("["):
+            # 计算原始名称中 ']' 的数量
+            count_in_name = name.count("]")
+            required_closing_brackets = count_in_name + 1  # 需要找到这么多个 ']'
+            current_pos = 0
+            found_brackets = 0
+            end_pos = -1
+
+            # 查找第 (count_in_name + 1) 个 ']' 的位置
+            while found_brackets < required_closing_brackets:
+                next_pos = dialogue.find("]", current_pos)
+                if next_pos == -1:  # 未找到足够的 ']'
+                    break
+                found_brackets += 1
+                end_pos = next_pos
+                current_pos = next_pos + 1 # 在此 ']' 之后继续搜索
+
+            # 如果找到了足够数量的 ']'，则分割字符串
+            if found_brackets == required_closing_brackets:
+                # 内容从第一个 '[' 到第 N 个 ']'
+                extracted_name = dialogue[1:end_pos]
+                remaining_dialogue = dialogue[end_pos + 1:].lstrip()
+                return (extracted_name, remaining_dialogue)
+
+        # 回退：如果条件不满足，返回原始名称和完整对话
         return name, dialogue
+
+    @classmethod
+    def get_project_type(self):
+        return "Vnt"

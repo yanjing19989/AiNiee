@@ -15,6 +15,7 @@ class MToolOptimizer(PluginBase):
         self.name = "MToolOptimizer"
         self.description = (
             "MTool 优化器，优化翻译流程，提升翻译质量，至多可减少 40% 的 翻译时间 与 Token 消耗"
+            + "\n" + "但可能会带来稳定性下降，翻译错行，翻译不通畅等问题，请酌情开启"
             + "\n" + "兼容性：支持全部语言；支持全部模型；仅支持 MTool 文本；"
         )
 
@@ -35,14 +36,16 @@ class MToolOptimizer(PluginBase):
         project = data[0]
 
         # 限制文本格式
-        if "mtool" not in project.get("project_type", "").lower():
+        if "Mtool" not in project.get("file_project_types", ()):
             return
 
         if event == "preproces_text":
-            self.on_preproces_text(event, config, data, items, project)
+            mtool_items = [line for line in data if line.get("file_project_type") == 'Mtool']
+            self.on_preproces_text(event, config, data, mtool_items, project)
 
         if event in ("manual_export", "postprocess_text"):
-            self.on_postprocess_text(event, config, data, items, project)
+            mtool_items = [line for line in data if line.get("file_project_type") == 'Mtool']
+            self.on_postprocess_text(event, config, data, mtool_items, project)
 
     # 文本预处理事件
     def on_preproces_text(self, event: str, config: TranslatorConfig, data: list[dict], items: list[dict], project: dict) -> None:

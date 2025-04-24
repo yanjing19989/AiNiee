@@ -1,49 +1,59 @@
-import os
-import shutil
+from pathlib import Path
+import re
+from typing import List 
 
+from ModuleFolders.Cache.CacheItem import CacheItem
+from ModuleFolders.FileOutputer.BaseWriter import (
+    BaseTranslatedWriter,
+    OutputConfig
+)
 
-class RenpyWriter():
-    def __init__(self):
-        pass
+class RenpyWriter(BaseTranslatedWriter):
+    def __init__(self, output_config: OutputConfig):
+        super().__init__(output_config)
 
-    def output_renpy_file(self, data, output_path, input_path):
-        """写入翻译后的rpy文件"""
-        # 先复制整个目录结构
-        if os.path.exists(output_path):
-            shutil.rmtree(output_path)
-        shutil.copytree(input_path, output_path)
+    @classmethod
+    def get_project_type(self):
+        return "Renpy"
 
-        # 按文件分组数据
-        file_map = {}
-        for item in data:
-            if "new_line_num" not in item:
+    def write_translated_file(
+        self, translation_file_path: Path, items: List[CacheItem], 
+        source_file_path: Path = None,
+    ):
+        # 读取行，保留换行符
+        lines = source_file_path.read_text(encoding="utf-8").splitlines(True)
+
+        # 按行号降序排序项目，以避免修改期间索引偏移问题
+        new_items = sorted(items, key=lambda x: x.new_line_num, reverse=True)
+
+        for item in new_items:
+            line_num = item.new_line_num # 这是要修改的行号（'new' 行或代码行）
+            if line_num < 0 or line_num >= len(lines):
+                print(f"警告: 项目的行号 {line_num} 无效。正在跳过。")
                 continue
-            
-            full_path = os.path.join(output_path, item["storage_path"])
-            file_map.setdefault(full_path, []).append(item)
 
-        # 处理每个文件
-        for file_path, items in file_map.items():
-            with open(file_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            original_line = lines[line_num]
+            new_trans = item.translated_text # 新的翻译文本
+            new_trans = re.sub(r'(?<!\\)"',r'\\"', new_trans) # 转义双引号
 
-            # 按行号降序排序避免修改影响
-            sorted_items = sorted(items, key=lambda x: x["new_line_num"], reverse=True)
+            # 查找原始行中第一个和最后一个双引号的索引
+            first_quote_index = original_line.find('"')
+            last_quote_index = original_line.rfind('"')
 
-            for item in sorted_items:
-                line_num = item["new_line_num"]
-                if line_num >= len(lines):
-                    continue
+            # 确保我们找到了不同的开始和结束引号
+            if first_quote_index != -1 and last_quote_index != -1 and first_quote_index < last_quote_index:
+                # 提取第一个引号之前的部分（包括缩进、标签等）
+                prefix = original_line[:first_quote_index + 1]
+                # 提取最后一个引号之后的部分（包括尾随空格、注释等）
+                suffix = original_line[last_quote_index:]
 
-                old_line = lines[line_num]
-                new_trans = item["translated_text"]
+                # 通过仅替换引号内的内容来构造新行
+                new_line = f'{prefix}{new_trans}{suffix}'
+                lines[line_num] = new_line
 
-                # 保留原格式生成新行
-                parts = old_line.split('"', 2)
-                if len(parts) >= 3:
-                    new_line = f'{parts[0]}"{new_trans}"{parts[2]}'
-                    lines[line_num] = new_line
-
-            # 写回文件
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.writelines(lines)
+        # 将修改后的行写回到翻译文件路径
+        try:
+            translation_file_path.parent.mkdir(parents=True, exist_ok=True) # 确保目录存在
+            translation_file_path.write_text("".join(lines), encoding="utf-8")
+        except Exception as e:
+             print(f"写入翻译文件 {translation_file_path} 时出错: {e}")

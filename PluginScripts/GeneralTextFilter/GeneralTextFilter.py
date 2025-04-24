@@ -1,4 +1,3 @@
-import re
 from ..PluginBase import PluginBase
 
 
@@ -25,8 +24,6 @@ class GeneralTextFilter(PluginBase):
             self.filter_text(event_data)
 
 
-
-
     # 忽视空值内容和将整数型，浮点型数字变换为字符型数字函数，且改变翻译状态为7,因为T++读取到整数型数字时，会报错，明明是自己导出来的...
     def filter_text(self,cache_list):
         for entry in cache_list:
@@ -49,12 +46,12 @@ class GeneralTextFilter(PluginBase):
                     continue
 
                 # 检查文本是否为空
-                if source_text == "":
+                if source_text == None:
                     entry['translation_status'] = 7
                     continue
 
                 # 检查文本是否为空
-                if source_text == None:
+                if source_text.strip() == "":
                     entry['translation_status'] = 7
                     continue
 
@@ -70,13 +67,18 @@ class GeneralTextFilter(PluginBase):
 
 
                 #加个检测后缀为MP3，wav，png，这些文件名的文本，都是纯代码文本，所以忽略掉
-                if isinstance(source_text, str) and any(source_text.endswith(ext) for ext in ['.mp3', '.wav', '.png', '.jpg', '.gif', '.rar', '.zip', '.json', '.ogg']):
+                if isinstance(source_text, str) and any(source_text.endswith(ext) for ext in ['.mp3', '.wav', '.png', '.jpg', '.gif', '.rar', '.zip', '.json', '.ogg', '.txt', '.mps', '.woff']):
                     entry['translation_status'] = 7
                     continue
 
 
                 # 同上
-                if isinstance(source_text, str) and any(source_text.endswith(ext) for ext in ['.txt', '.wav', '.webp']):
+                if isinstance(source_text, str) and any(source_text.endswith(ext) for ext in ['.txt', '.wav', '.webp', '.jpg)', '.jpg)  ', '.txt', '.doc', '.html', '.bmp', '.pic', '.aac', '.flac', '.avi']):
+                    entry['translation_status'] = 7
+                    continue
+
+                # 同上
+                if isinstance(source_text, str) and any(source_text.endswith(ext) for ext in ['.py', '.c', '.cpp', '.js', '.java', '.css', '.xml', '.flac', '.jpeg', '.mov', '.mkv', '.flv']):
                     entry['translation_status'] = 7
                     continue
 
@@ -88,17 +90,11 @@ class GeneralTextFilter(PluginBase):
 
 
                 # 检查开头的
-                if isinstance(source_text, str) and any(source_text.startswith(ext) for ext in ['EV0']):
+                if isinstance(source_text, str) and any(source_text.startswith(ext) for ext in ['EV0', '\img']):
                     entry['translation_status'] = 7
                     continue
 
-                # 检查通过后的文本预处理
-                entry['source_text'] = source_text.replace('\n\n', '\n').replace('\r\n', '\n')
 
-                # 检查字符串开头和结尾是否为换行符
-                if source_text.startswith('\n') or source_text.endswith('\n'):
-                    # 剔除字符串开头和结尾的换行符
-                    entry['source_text'] = source_text.strip('\n')
                     
 
 

@@ -2,12 +2,12 @@ import os
 import time
 import threading
 
-import opencc
 import rapidjson as json
 
 from Base.Base import Base
 from ModuleFolders.Cache.CacheItem import CacheItem
 from ModuleFolders.Cache.CacheProject import CacheProject
+
 
 class CacheManager(Base):
 
@@ -83,10 +83,19 @@ class CacheManager(Base):
         self.reset()
 
         try:
-            self.project = CacheProject(data[0])
-            self.items = [CacheItem(item) for item in data[1:]]
+            self.project = CacheProject(data[0]) # 项目头信息
+            self.items = [CacheItem(item) for item in data[1:]] # 文本对信息
         except Exception as e:
             self.debug("从列表读取缓存数据失败 ...", e)
+
+    # 从元组中读取缓存数据
+    def load_from_tuple(self, data: tuple[CacheProject, list[CacheItem]]):
+        self.reset()
+        try:
+            self.project = data[0] # 项目头信息
+            self.items = data[1] # 文本对信息
+        except Exception as e:
+            self.debug("从元组读取缓存数据失败 ...", e)
 
     # 从文件读取缓存数据
     def load_from_file(self, output_path: str) -> None:
@@ -181,79 +190,42 @@ class CacheManager(Base):
         chunks = []
         previous_chunks = []
 
-        # 根据限制类型确定交叉限制参数
-        if limit_type == "token":
-            cross_max = 30  # 行数限制
-        elif limit_type == "line":
-            cross_max = 8000  # token限制
-        else:
-            raise ValueError("Invalid limit_type, must be 'token' or 'line'")
-
         chunk = []
         chunk_length = 0
-        cross_length = 0  # 交叉限制累计值（行数/tokens）
 
-        for item in [v for v in self.items if v.get_translation_status() == CacheItem.STATUS.UNTRANSLATED]:
-            # 计算当前条目长度和交叉长度
+        # 筛选未翻译的条目
+        untranslated_items = [v for v in self.items if v.get_translation_status() == CacheItem.STATUS.UNTRANSLATED]
+
+        for item in untranslated_items:
+            # 计算当前条目长度（基于主限制类型）
             if limit_type == "token":
                 current_length = item.get_token_count()
-                cross_increment = 1  # 按行计数
-            else:
+            elif limit_type == "line":
                 current_length = 1  # 按行计数
-                cross_increment = item.get_token_count()
+            else:
+                 raise ValueError("Invalid limit_type, must be 'token' or 'line'")
+
 
             # 判断是否结束当前chunk的条件（第一条不判断）
             if len(chunk) > 0:
+                # 检查是否超出主限制
                 exceed_primary = (chunk_length + current_length) > limit_count
-                exceed_cross = (cross_length + cross_increment) > cross_max
+                # 检查存储路径是否改变
                 path_changed = item.get_storage_path() != chunk[-1].get_storage_path()
 
-                if exceed_primary or exceed_cross or path_changed:
+                # 结束当前 chunk 的条件：超出主限制 或 路径改变
+                if exceed_primary or path_changed: 
                     chunks.append(chunk)
                     previous_chunks.append(self.generate_previous_chunks(chunk[0], previous_line_count))
                     # 重置累计值
                     chunk = []
                     chunk_length = 0
-                    cross_length = 0
 
             # 添加条目到当前chunk
             chunk.append(item)
             chunk_length += current_length
-            cross_length += cross_increment
 
-        # 处理最后一个chunk
-        if len(chunk) > 0:
-            chunks.append(chunk)
-            previous_chunks.append(self.generate_previous_chunks(chunk[0], previous_line_count))
-
-        return chunks, previous_chunks
-
-    # 生成缓存数据条目片段
-    def generate_item_chunks_old(self, limit_type: str, limit_count: int, previous_line_count: int) -> tuple[list[list[CacheItem]], list[list[CacheItem]]]:
-        chunks = []
-        previous_chunks = []
-
-        # 开始生成缓存数据片段
-        chunk = []
-        chunk_length = 0
-        for item in [v for v in self.items if v.get_translation_status() == CacheItem.STATUS.UNTRANSLATED]:
-            current_length = 1 if limit_type == "line" else item.get_token_count()
-            if (
-                # 首先，每个片段的第一条不判断是否超限，以避免特别长的文本导致死循环
-                len(chunk) > 0
-                # 然后，如果 累计长度超限 或者 数据来源跨文件，则结束此片段
-                and (chunk_length + current_length > limit_count or item.get_storage_path() != chunk[-1].get_storage_path())
-            ):
-                chunks.append(chunk)
-                previous_chunks.append(self.generate_previous_chunks(chunk[0], previous_line_count))
-
-                chunk = []
-                chunk_length = 0
-
-            chunk.append(item)
-            chunk_length = chunk_length + current_length
-
-        # 如果还有剩余数据，则添加到列表中
+        # 处理循环结束后剩余的最后一个chunk
         if len(chunk) > 0:
             chunks.append(chunk)
             previous_chunks.append(self.generate_previous_chunks(chunk[0], previous_line_count))

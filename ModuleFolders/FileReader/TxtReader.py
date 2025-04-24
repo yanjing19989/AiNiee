@@ -1,88 +1,57 @@
-import os
+from pathlib import Path
+
+from ModuleFolders.Cache.CacheItem import CacheItem
+from ModuleFolders.FileReader.BaseReader import (
+    BaseSourceReader,
+    InputConfig,
+    text_to_cache_item
+)
 
 
-class TxtReader():
-    def __init__(self):
-        pass
+class TxtReader(BaseSourceReader):
+    def __init__(self, input_config: InputConfig, max_empty_line_check=None):
+        super().__init__(input_config)
+        self.max_empty_line_check = max_empty_line_check
 
+    @classmethod
+    def get_project_type(cls):
+        return "Txt"
 
-    # 读取文件夹中树形结构Txt小说文件
-    def read_txt_files (self,folder_path):
+    @property
+    def support_file(self):
+        return "txt"
 
-        # 创建缓存数据，并生成文件头信息
-        json_data_list = []
-        json_data_list.append({
-            "project_type": "Txt",
-        })
+    # 读取单个txt的文本及其他信息
+    def read_source_file(self, file_path: Path, detected_encoding: str) -> list[CacheItem]:
+        items = []
+        # 切行
+        # 使用传入的 `detected_encoding` 参数正确读取未知编码的纯文本文件，并使用`splitlines()`正确切分行
+        lines = file_path.read_text(encoding=detected_encoding).splitlines()
 
-        #文本索引初始值
-        i = 1
+        for i, line in enumerate(lines):
+            # 如果当前行是空行
+            # 并且位置不是文本开头，则跳过当前行
+            if not line.strip() and i != 0:
+                continue
 
-        # 遍历文件夹及其子文件夹
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                # 判断文件是否为 JSON 文件
-                if file.endswith(".txt"):
-                    file_path = os.path.join(root, file) # 构建文件路径
-                    
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
+            # 去掉文本开头的空格
+            line_lstrip = line.lstrip()
+            # 获取文本行开头的原始空格
+            spaces = line[:len(line) - len(line_lstrip)]
 
-                    storage_path = os.path.relpath(file_path, folder_path)
-                    file_name = file
+            item = text_to_cache_item(line_lstrip)
+            # 原始空格保存至变量中，后续Writer中还原
+            item.sentence_indent = spaces
+            item.line_break = self._count_next_empty_line(lines, i)
+            items.append(item)
+        return items
 
-                    # 切行
-                    lines = content.split('\n')
-
-
-                    for j, line in enumerate(lines):
-                        if line.strip() == '': # 跳过空行
-                            continue
-                        spaces = len(line) - len(line.lstrip()) # 获取行开头的空格数
-
-                        if j < len(lines) - 1 and lines[j + 1].strip() == '': # 检查当前行是否是文本中的最后一行,并检测下一行是否为空行
-                            if (j+1) < len(lines) - 1 and lines[j + 2].strip() == '': # 再检查下下行是否为空行，所以最多只会保留2行空行信息
-                                # 将数据存储在字典中
-                                json_data_list.append({
-                                    "text_index": i,
-                                    "translation_status": 0,
-                                    "source_text": line,
-                                    "translated_text": line,
-                                    "model": "none",
-                                    "sentence_indent": spaces,
-                                    "line_break":2,
-                                    "storage_path": storage_path,
-                                    "file_name": file_name,
-                                })
-                            else:
-                                # 将数据存储在字典中
-                                json_data_list.append({
-                                    "text_index": i,
-                                    "translation_status": 0,
-                                    "source_text": line,
-                                    "translated_text": line,
-                                    "model": "none",
-                                    "sentence_indent": spaces,
-                                    "line_break":1,
-                                    "storage_path": storage_path,
-                                    "file_name": file_name,
-                                })
-
-                        else:
-                            # 将数据存储在字典中
-                            json_data_list.append({
-                                "text_index": i,
-                                "translation_status": 0,
-                                "source_text": line,
-                                "translated_text": line,
-                                "model": "none",
-                                "sentence_indent": spaces,
-                                "line_break":0,
-                                "storage_path": storage_path,
-                                "file_name": file_name,
-                            })
-
-                        i += 1
-
-
-        return json_data_list
+    def _count_next_empty_line(self, lines, line_index):
+        """检查后续行是否连续空行，最多检查 max_empty_line_check 行"""
+        max_empty_line_check = self.max_empty_line_check if self.max_empty_line_check is not None else len(lines)
+        empty_line_index = line_index
+        for empty_line_index in range(line_index + 1, min(len(lines), line_index + 1 + max_empty_line_check)):
+            if lines[empty_line_index].strip() != '':
+                empty_line_index -= 1
+                break
+        return empty_line_index - line_index

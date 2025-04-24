@@ -22,9 +22,9 @@ class RequestLimiter:
     # 设置限制器的参数
     def set_limit(self, tpm_limit: int, rpm_limit: int) -> None:
         # 设置限制器的TPM参数
-        self.max_tokens = 16000  # 令牌桶最大容量
+        self.max_tokens = 32000  # 令牌桶最大容量
         self.tokens_rate = tpm_limit / 60  # 令牌每秒的恢复速率
-        self.remaining_tokens = 16000  # 令牌桶剩余容量
+        self.remaining_tokens = 32000  # 令牌桶剩余容量
 
         # 设置限制器的RPM参数
         self.request_interval = 60 / rpm_limit  # 请求的最小时间间隔（s）
@@ -47,7 +47,7 @@ class RequestLimiter:
 
         # 检查是否超过模型最大输入限制
         if tokens >= self.max_tokens:
-            print("[Warning INFO] 该次任务总tokens量已经超过模型最大输入限制，将进入下次拆分轮次")
+            print("[Warning INFO] 该次任务的文本总tokens量已经超过最大输入限制，将直接进入下次拆分轮次")
             return False
         
         # 检查是否超过余量

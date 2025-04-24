@@ -132,7 +132,7 @@ class TranslatorConfig(Base):
             print(self.actual_thread_counts)
 
 
-    # 准备翻译
+    # 准备翻译（石山，待改进）
     def prepare_for_translation(self) -> None:
 
         # 初始化术语表缓存区
@@ -262,10 +262,6 @@ class TranslatorConfig(Base):
             self.tpm_limit = min(self.tpm_limit_a,self.tpm_limit_b)
 
 
-
-
-
-
         # 设置网络代理(共用设置)
         if self.proxy_enable == False or self.proxy_url == "":
             os.environ.pop("http_proxy", None)
@@ -274,7 +270,7 @@ class TranslatorConfig(Base):
             os.environ["http_proxy"] = self.proxy_url
             os.environ["https_proxy"] = self.proxy_url
 
-
+    # 更新术语表与禁翻表到配置中
     def update_glossary_ntl_config(self, glossary_entries, ntl_entries):
         
         # 检测一下是不是空，免得浪费性能
@@ -448,6 +444,9 @@ class TranslatorConfig(Base):
             api_key = self.get_next_apikey()
             api_format = self.platforms.get(target_platform).get("api_format")
             model_name = self.model
+            region = self.platforms.get(target_platform).get("region",'')
+            access_key = self.platforms.get(target_platform).get("access_key",'')
+            secret_key = self.platforms.get(target_platform).get("secret_key",'')
             request_timeout = self.request_timeout
             temperature = self.platforms.get(target_platform).get("temperature")
             top_p = self.platforms.get(target_platform).get("top_p")
@@ -461,6 +460,9 @@ class TranslatorConfig(Base):
             api_key = self.get_next_apikey_a()
             api_format = self.platforms.get(target_platform).get("api_format")
             model_name = self.model_a
+            region = self.platforms.get(target_platform).get("region",'')
+            access_key = self.platforms.get(target_platform).get("access_key",'')
+            secret_key = self.platforms.get(target_platform).get("secret_key",'')
             request_timeout = self.request_timeout
             temperature = self.platforms.get(target_platform).get("temperature")
             top_p = self.platforms.get(target_platform).get("top_p")
@@ -474,6 +476,9 @@ class TranslatorConfig(Base):
             api_key = self.get_next_apikey_b()
             api_format = self.platforms.get(target_platform).get("api_format")
             model_name = self.model_b
+            region = self.platforms.get(target_platform).get("region",'')
+            access_key = self.platforms.get(target_platform).get("access_key",'')
+            secret_key = self.platforms.get(target_platform).get("secret_key",'')
             request_timeout = self.request_timeout
             temperature = self.platforms.get(target_platform).get("temperature")
             top_p = self.platforms.get(target_platform).get("top_p")
@@ -488,6 +493,9 @@ class TranslatorConfig(Base):
             "api_key": api_key,
             "api_format": api_format,
             "model_name": model_name,
+            "region": region,
+            "access_key": access_key,
+            "secret_key": secret_key,
             "request_timeout": request_timeout,
             "temperature": temperature,
             "top_p": top_p,

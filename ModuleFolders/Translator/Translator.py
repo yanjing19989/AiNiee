@@ -1,3 +1,4 @@
+import os
 import time
 import threading
 import concurrent.futures
@@ -23,7 +24,7 @@ from ModuleFolders.RequestLimiter.RequestLimiter import RequestLimiter
 # 翻译器
 class Translator(Base):
 
-    def __init__(self, plugin_manager: PluginManager) -> None:
+    def __init__(self, plugin_manager: PluginManager, file_reader: FileReader, file_writer: FileOutputer) -> None:
         super().__init__()
 
         # 初始化
@@ -31,6 +32,8 @@ class Translator(Base):
         self.config = TranslatorConfig()
         self.cache_manager = CacheManager()
         self.request_limiter = RequestLimiter()
+        self.file_reader = file_reader
+        self.file_writer = file_writer
 
         # 线程锁
         self.data_lock = threading.Lock()
@@ -89,8 +92,7 @@ class Translator(Base):
             self.print("")
 
         # 写入文件
-        FileOutputer.output_translated_content(
-            self,
+        self.file_writer.output_translated_content(
             cache_list,
             self.config.label_output_path,
             self.config.label_input_path,
@@ -120,7 +122,7 @@ class Translator(Base):
             "continue_status" : continue_status,
         })
 
-    # 实际的翻译流程
+    # 翻译主流程
     def translation_start_target(self, continue_status: bool) -> None:
         # 设置内部状态（用于判断翻译任务是否实际在执行）
         self.translating = True
@@ -134,23 +136,35 @@ class Translator(Base):
         # 配置翻译平台信息
         self.config.prepare_for_translation()
 
-        # 请求线程数
+        # 配置请求线程数
         self.config.thread_counts_setting()  # 需要在平台信息配置后面，依赖前面的数值 
 
         # 配置请求限制器
         self.request_limiter.set_limit(self.config.tpm_limit, self.config.rpm_limit)
 
+        # 如果开启自动设置输出文件夹功能，设置为输入文件夹的平级目录
+        if self.config.auto_set_output_path == True:
+            abs_input_path = os.path.abspath(self.config.label_input_path)
+            parent_dir = os.path.dirname(abs_input_path)
+            output_folder_name = "AiNieeOutput"
+            self.config.label_output_path = os.path.join(parent_dir, output_folder_name)
 
-        # 生成缓存列表
+           # 保存新配置
+            config = self.load_config()
+            config["label_output_path"] = self.config.label_output_path
+            self.save_config(config)
+
+
+        # 读取输入文件夹的文件，生成缓存
         try:
             if continue_status == True:
                 self.cache_manager.load_from_file(self.config.label_output_path)
             else:
-                self.cache_manager.load_from_list(
-                    FileReader.read_files(
-                        self,
+                self.cache_manager.load_from_tuple(
+                    self.file_reader.read_files(
                         self.config.translation_project,
                         self.config.label_input_path,
+                        self.config.label_input_exclude_rule
                     )
                 )
         except Exception as e:
@@ -191,9 +205,6 @@ class Translator(Base):
         self.plugin_manager.broadcast_event("text_filter", self.config, cache_list)
         self.plugin_manager.broadcast_event("preproces_text", self.config, cache_list)
         self.cache_manager.load_from_list(cache_list)
-
-
-
 
         # 开始循环
         for current_round in range(self.config.round_limit + 1):
@@ -242,7 +253,7 @@ class Translator(Base):
             tasks_list = []
             self.print("")
             for chunk, previous_chunk in tqdm(zip(chunks, previous_chunks), desc = "生成翻译任务", total = len(chunks)):
-                task = TranslatorTask(self.config, self.plugin_manager, self.request_limiter, self.cache_manager) # 实例化
+                task = TranslatorTask(self.config, self.plugin_manager, self.request_limiter) # 实例化
                 task.set_items(chunk)  #传入该任务待翻译原文
                 task.set_previous_items(previous_chunk) # 传入该任务待翻译原文的上文
                 task.prepare(self.config.target_platform,self.config.prompt_preset) # 预先构建消息列表
@@ -326,8 +337,7 @@ class Translator(Base):
             self.print("")
 
         # 写入文件
-        FileOutputer.output_translated_content(
-            self,
+        self.file_writer.output_translated_content(
             cache_list,
             self.config.label_output_path,
             self.config.label_input_path,
@@ -341,7 +351,7 @@ class Translator(Base):
 
         # 触发翻译停止完成的事件
         self.emit(Base.EVENT.TRANSLATION_STOP_DONE, {})
-        self.plugin_manager.broadcast_event("translation_completed", self.config, None)
+        self.plugin_manager.broadcast_event("translation_completed", self.config, cache_list)
 
     # 执行简繁转换
     def convert_simplified_and_traditional(self, preset: str, cache_list: list[dict]) -> list[dict]:
